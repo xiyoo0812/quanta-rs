@@ -3,24 +3,19 @@ extern crate lua;
 
 use lua::*;
 use libc::c_int;
-use std::ffi::{CString};
 
 extern "C" fn testf(l: *mut lua_State) -> c_int {
     unsafe {
-        let mut isnum = 0;
-        let a = lua_tointegerx(l, 1, &mut isnum);
-        let b = lua_tointegerx(l, 2, &mut isnum);
-        lua_pushinteger(l, a+b);
+        let a = lua_tointeger(l, 1);
+        let b = lua_tointeger(l, 2);
+        lua_pushinteger(l, a + b);
         return 1;
     }
 }
 
-fn regitser_func(l: *mut lua_State, name: &str, f: lua_CFunction) {
-    unsafe {
-        let fname = CString::new(name).unwrap();
-        lua_pushcfunction(l, f);
-        lua_setfield(l, -2, fname.as_ptr());
-    }
+unsafe fn regitser_func(l: *mut lua_State, name: &str, f: lua_CFunction) {
+    lua_pushcfunction(l, f);
+    luar_setfield(l, -2, name);
 }
 
 #[no_mangle]
