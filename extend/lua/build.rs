@@ -10,7 +10,7 @@ fn main() {
     if cfg!(unix) {
         build.define("LUA_USE_LINUX", "1");
     }
-    if cfg!(macos) {
+    if cfg!(target_os = "macos") {
         build.define("LUA_USE_MACOSX", "1");
     }
 
