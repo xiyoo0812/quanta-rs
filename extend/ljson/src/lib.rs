@@ -1,28 +1,31 @@
+#![allow(non_snake_case)]
+
 extern crate libc;
 extern crate lua;
 
-use lua::*;
-use libc::c_int;
+#[macro_use]
+mod macros;
 
-extern "C" fn testf(l: *mut lua_State) -> c_int {
+mod json;
+
+use lua::lua_State;
+use libc::c_int as int;
+
+extern "C" fn testf(L: *mut lua_State) -> int {
     unsafe {
-        let a = lua_tointeger(l, 1);
-        let b = lua_tointeger(l, 2);
-        lua_pushinteger(l, a + b);
+        let a = lua::lua_tointeger(L, 1);
+        let b = lua::lua_tointeger(L, 2);
+        lua::lua_pushinteger(L, a + b);
         return 1;
     }
 }
 
-unsafe fn regitser_func(l: *mut lua_State, name: &str, f: lua_CFunction) {
-    lua_pushcfunction(l, f);
-    luar_setfield(l, -2, name);
-}
-
 #[no_mangle]
-pub extern "C" fn luaopen_ljson(l: *mut lua_State) -> c_int {
+pub extern "C" fn luaopen_ljson(L: *mut lua_State) -> int {
     unsafe{
-        lua_createtable(l, 4, 0);
-        regitser_func(l, "test", testf);
+        lua::lua_createtable(L, 4, 0);
+        lua::lua_pushcfunction(L, testf);
+        lua::lua_setfield(L, -2, cstr!("test"));
         return 1;
     }
 }
