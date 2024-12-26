@@ -1,0 +1,15 @@
+[package]
+name = "lua"
+version = "0.1.0"
+build = "build.rs"
+links = "lua"
+
+[lib]
+name = "lua"
+
+[build-dependencies]
+pkg-config = "0.3"
+cc = "1.2.5"
+
+[dependencies]
+libc = "^0.2.1"
