@@ -1,4 +1,3 @@
-extern crate pkg_config;
 extern crate cc;
 
 fn main() {
