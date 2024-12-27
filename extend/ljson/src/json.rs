@@ -1,12 +1,11 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-extern crate lua;
-extern crate serde;
 extern crate serde_json;
 
-use lua::lua_State;
 use libc::c_int as int;
+
+use lua::{ cstr,  ternary, lua_State };
 use serde_json::{ json, Map, Number, Value };
 
 pub const MAX_ENCODE_DEPTH: u32     = 16;
