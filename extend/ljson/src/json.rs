@@ -86,10 +86,11 @@ pub unsafe fn encode_one(L: *mut lua_State, emy_as_arr: bool, idx: i32, depth: u
     let ttype = lua::lua_type(L, idx);
     match ttype {
         lua::LUA_TNIL => return json!(null),
+        lua::LUA_TNONE => return json!(null),
         lua::LUA_TNUMBER => return encode_number(L, idx),
         lua::LUA_TTABLE => return encode_table(L, emy_as_arr, idx, depth + 1),
         lua::LUA_TBOOLEAN => {
-            let val = ternary!(lua::lua_toboolean(L, idx) != 0, "true", "false");
+            let val = ternary!(lua::lua_toboolean(L, idx) != 0, true, false);
             return json!(val);
         }
         lua::LUA_TSTRING=> {
