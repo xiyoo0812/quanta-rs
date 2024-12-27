@@ -6,17 +6,166 @@ extern crate serde;
 extern crate serde_json;
 
 use lua::lua_State;
-use std::ffi::CStr;
 use libc::c_int as int;
-use libc::size_t as size_t;
-use serde_json::Value as JsonValue;
-
-use std::str;
+use serde_json::{ json, Map, Number, Value };
 
 pub const MAX_ENCODE_DEPTH: u32     = 16;
 
-pub unsafe fn encode(L: *mut lua_State) -> int {
-    return encode_impl(L);
+unsafe fn is_lua_array(L: *mut lua_State, idx: i32, emy_as_arr: bool) -> bool {
+    if lua::lua_type(L, idx) != lua::LUA_TTABLE { return false; }
+    let raw_len = lua::lua_rawlen(L, idx) as isize;
+    if raw_len == 0 && !emy_as_arr { return false; }
+    let index = lua::lua_absindex(L, idx);
+    lua::lua_pushnil(L);
+    let mut curlen : isize = 0;
+    while lua::lua_next(L, index) != 0 {
+        if lua::lua_isinteger(L, -2) == 0 { return false; }
+        let key = lua::lua_tointeger(L, -2);
+        if key <= 0 || key > raw_len { return false; }
+        lua::lua_pop(L, 1);
+        curlen += 1;
+    }
+    return curlen == raw_len;
+}
+
+unsafe fn encode_number(L: *mut lua_State, idx: i32) -> Value {
+    if lua::lua_isinteger(L, idx) == 1 {
+        let val = lua::lua_tointeger(L, idx);
+        return json!(val);
+    }
+    let val = lua::lua_tonumber(L, idx);
+    return json!(val);
+}
+
+unsafe fn encode_key(L: *mut lua_State, idx: i32) -> String {
+    let ttype = lua::lua_type(L, idx);
+    match ttype {
+        lua::LUA_TSTRING=> {
+            let val: Option<String> = lua::lua_tolstring(L, idx);
+            return val.unwrap_or_default();
+        },
+        lua::LUA_TNUMBER=> {
+            let val = lua::lua_tonumber(L, idx);
+            return val.to_string();
+        },
+        _ => lua::luaL_error(L, cstr!("encode can't pack key"))
+    }
+}
+
+unsafe fn encode_array(L: *mut lua_State, emy_as_arr: bool, index: i32, depth: u32) -> Value {
+    let mut values: Vec<Value> = vec![];
+    let raw_len = lua::lua_rawlen(L, index) as i32;
+    for i in 1..=raw_len {
+        lua::lua_rawgeti(L, index, i);
+        values.push(encode_one(L, emy_as_arr, -1, depth));
+        lua::lua_pop(L, 1);
+    }
+    return Value::Array(values);
+}
+
+unsafe fn encode_table(L: *mut lua_State, emy_as_arr: bool, idx: i32, depth: u32) -> Value {
+    let index = lua::lua_absindex(L, idx);
+    if !is_lua_array(L, index, emy_as_arr) {
+        lua::lua_pushnil(L);
+        let mut valmap = Map::new();
+        while lua::lua_next(L, index) != 0 {
+            let key = encode_key(L, -2);
+            let val = encode_one(L, emy_as_arr, -1, depth);
+            valmap.insert(key, val);
+            lua::lua_pop(L, 1);
+        }
+        return Value::Object(valmap);
+    }
+    return encode_array(L, emy_as_arr, index, depth);
+}
+
+pub unsafe fn encode_one(L: *mut lua_State, emy_as_arr: bool, idx: i32, depth: u32) -> Value {
+    if depth > MAX_ENCODE_DEPTH {
+        lua::luaL_error(L, cstr!("encode can't pack too depth table"));
+    }
+    let ttype = lua::lua_type(L, idx);
+    match ttype {
+        lua::LUA_TNIL => return json!(null),
+        lua::LUA_TNUMBER => return encode_number(L, idx),
+        lua::LUA_TTABLE => return encode_table(L, emy_as_arr, idx, depth + 1),
+        lua::LUA_TBOOLEAN => {
+            let val = ternary!(lua::lua_toboolean(L, idx) != 0, "true", "false");
+            return json!(val);
+        }
+        lua::LUA_TSTRING=> {
+            let val = lua::lua_tostring(L, idx).unwrap_or_default();
+            return json!(val);
+        }
+        lua::LUA_TTHREAD => return json!("unsupported thread"),
+        lua::LUA_TFUNCTION => return json!("unsupported function"),
+        lua::LUA_TUSERDATA => return json!("unsupported userdata"),
+        lua::LUA_TLIGHTUSERDATA => return json!("unsupported luserdata"),
+        _ => return json!("unsupported datatype")
+    }
+}
+
+pub unsafe fn decode_number(L: *mut lua_State, val: &Number) {
+    if val.is_i64() {
+        lua::lua_pushinteger(L, val.as_i64().unwrap() as isize);
+        return
+    }
+    lua::lua_pushnumber(L, val.as_f64().unwrap());
+}
+
+pub unsafe fn decode_array(L: *mut lua_State, val: &Vec<Value>, numkeyable: bool) {
+    lua::lua_createtable(L, val.len() as i32, 0);
+    for (i, v) in val.iter().enumerate() {
+        lua::lua_pushinteger(L, i as isize + 1);
+        decode_one(L, v, numkeyable);
+        lua::lua_settable(L, -3);
+    }
+}
+
+pub unsafe fn decode_key(L: *mut lua_State, val: &String, numkeyable: bool) {
+    if numkeyable {
+        let res = val.parse::<isize>();
+        match res {
+            Ok(val) => lua::lua_pushinteger(L, val),
+            Err(_) => lua::lua_pushlstring(L, val.as_ptr() as *const i8, val.len() as usize)
+        }
+        return
+    }
+    lua::lua_pushlstring(L, val.as_ptr() as *const i8, val.len() as usize);
+}
+
+pub unsafe fn decode_object(L: *mut lua_State, val: &Map<String, Value>, numkeyable: bool) {
+    lua::lua_createtable(L, 0, val.len() as i32);
+    for (k, v) in val.iter() {
+        decode_key(L, k, numkeyable);
+        decode_one(L, v, numkeyable);
+        lua::lua_settable(L, -3);
+    }
+}
+
+pub unsafe fn decode_one(L: *mut lua_State, value: &Value, numkeyable: bool) -> int {
+    match value {
+        Value::Null => lua::lua_pushnil(L),
+        Value::Number(val) => decode_number(L, val),
+        Value::Bool(val) => lua::lua_pushboolean(L, *val as i32),
+        Value::Array(val) => decode_array(L, val, numkeyable),
+        Value::Object(val) => decode_object(L, val, numkeyable),
+        Value::String(val) => lua::lua_pushlstring(L, val.as_ptr() as *const i8, val.len() as usize),
+    }
+    return 1;
+}
+
+pub unsafe fn decode_core(L: *mut lua_State, numkeyable: bool, json: String) -> int {
+    let res = serde_json::from_str::<Value>(&json);
+    match res {
+        Ok(val) => return decode_one(L, &val, numkeyable),
+        Err(_) => lua::luaL_error(L, cstr!("encode can't unpack json"))
+    }
+}
+
+pub unsafe fn decode_impl(L: *mut lua_State) -> int {
+    let json = lua::lua_tolstring(L, 1).unwrap_or_default();
+    let numkeyable = lua::lua_toboolean(L, 2) != 0;
+    return decode_core(L, numkeyable, json);
 }
 
 pub unsafe fn encode_impl(L: *mut lua_State) -> int {
@@ -24,77 +173,8 @@ pub unsafe fn encode_impl(L: *mut lua_State) -> int {
     let val = encode_one(L, emy_as_arr, 1, 0);
     let x = serde_json::to_string(&val);
     match x {
-        Ok(x) => lua::lua_pushstring(L, x.as_ptr() as *const i8),
+        Ok(x) => lua::lua_pushlstring(L, x.as_ptr() as *const i8, x.len() as usize),
         Err(_) => lua::luaL_error(L, cstr!("encode can't pack too depth table")),
     }
     return 1;
-}
-
-unsafe fn encode_number(L: *mut lua_State, idx: i32) -> JsonValue {
-    if lua::lua_isnumber(L, idx) == 1 {
-        let val = lua::lua_tonumber(L, idx);
-        return serde_json::json!(val);
-    }
-    let val = lua::lua_tointeger(L, idx);
-    return serde_json::json!(val);
-}
-
-unsafe fn load_lua_string(L: *mut lua_State, idx: i32) -> String {
-    let mut len : size_t = 0;
-    let val = lua::lua_tolstring(L, idx, &mut len);
-    let res = CStr::from_ptr(val).to_str();
-    match res {
-        Ok(x) => return x.to_string(),
-        Err(_) => lua::luaL_error(L, cstr!("encode can't pack key"))
-    }
-    return "".to_string();
-}
-
-unsafe fn encode_key(L: *mut lua_State, idx: i32) -> String {
-    let ttype = lua::lua_type(L, idx);
-    match ttype {
-        lua::LUA_TSTRING=> return load_lua_string(L, idx),
-        lua::LUA_TNUMBER=> {
-            let val = lua::lua_tonumber(L, idx);
-            return val.to_string();
-        },
-        _ => lua::luaL_error(L, cstr!("encode can't pack key"))
-    }
-    return "".to_string();
-}
-
-unsafe fn encode_table(L: *mut lua_State, emy_as_arr: bool, idx: i32, depth: u32) -> JsonValue {
-    lua::lua_pushnil(L);
-    let mut doc: JsonValue = serde_json::json!({});
-    while lua::lua_next(L, idx) != 0 {
-        let key = encode_key(L, -2);
-        let val = encode_one(L, emy_as_arr, -1, depth);
-        doc[key] = val;
-    }
-    return doc;
-}
-
-pub unsafe fn encode_one(L: *mut lua_State, emy_as_arr: bool, idx: i32, depth: u32) -> JsonValue {
-    if depth > MAX_ENCODE_DEPTH {
-        lua::luaL_error(L, cstr!("encode can't pack too depth table"));
-    }
-    let ttype = lua::lua_type(L, idx);
-    match ttype {
-        lua::LUA_TNIL => return serde_json::json!(null),
-        lua::LUA_TNUMBER => return encode_number(L, idx),
-        lua::LUA_TTABLE => return encode_table(L, emy_as_arr, idx, depth + 1),
-        lua::LUA_TBOOLEAN => {
-            let val = ternary!(lua::lua_toboolean(L, idx) != 0, "true", "false");
-            return serde_json::json!(val);
-        }
-        lua::LUA_TSTRING=> {
-            let val = lua::lua_tonumber(L, idx);
-            return serde_json::json!(val);
-        }
-        lua::LUA_TTHREAD => return serde_json::json!("unsupported thread"),
-        lua::LUA_TFUNCTION => return serde_json::json!("unsupported function"),
-        lua::LUA_TUSERDATA => return serde_json::json!("unsupported userdata"),
-        lua::LUA_TLIGHTUSERDATA => return serde_json::json!("unsupported luserdata"),
-        _ => return serde_json::json!("unsupported datatype")
-    }
 }

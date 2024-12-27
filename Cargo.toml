@@ -3,15 +3,11 @@
 # unused = "allow" # For experimental dev.
 
 [workspace]
-#authors = ["xiyoo0812"]
-#description = "Bindings for Lua 5.4"
-#repository = "https://github.com/xiyoo0812/quanta-rs"
-#license = "MIT/Apache-2.0"
-
 resolver = "2"
 members = [
     "extend/lua",
     "extend/ljson",
+    "core/quanta",
 ]
 
 [profile.release]

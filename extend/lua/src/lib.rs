@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types)]
+#![allow(improper_ctypes)]
 #![allow(non_snake_case)]
 #![allow(dead_code)]
-#![allow(improper_ctypes)]
 
 extern crate libc;
 
@@ -10,6 +10,7 @@ use libc::c_void as void;
 use libc::c_char as char;
 use libc::c_uchar as uchar;
 use libc::size_t as size_t;
+use std::ffi::CStr;
 use std::{ default, ptr };
 
 pub const MULTRET: int              = -1;
@@ -131,6 +132,7 @@ extern "C" {
 
     pub fn lua_isnumber(L: *mut lua_State, idx: int) -> int;
     pub fn lua_isstring(L: *mut lua_State, idx: int) -> int;
+    pub fn lua_isinteger(L: *mut lua_State, idx: int) -> int;
     pub fn lua_iscfunction(L: *mut lua_State, idx: int) -> int;
     pub fn lua_isuserdata(L: *mut lua_State, idx: int) -> int;
     pub fn lua_type(L: *mut lua_State, idx: int) -> int;
@@ -144,11 +146,13 @@ extern "C" {
     pub fn lua_toboolean(L: *mut lua_State, idx: int) -> int;
     pub fn lua_tonumberx(L: *mut lua_State, idx: int, isnum: *mut int) -> lua_Number;
     pub fn lua_tointegerx(L: *mut lua_State, idx: int, isnum: *mut int) -> lua_Integer;
-    pub fn lua_tolstring(L: *mut lua_State, idx: int, len: *mut size_t) -> *const char;
     pub fn lua_tocfunction(L: *mut lua_State, idx: int) -> Option<lua_CFunction>;
     pub fn lua_touserdata(L: *mut lua_State, idx: int) -> *mut void;
     pub fn lua_topointer(L: *mut lua_State, idx: int) -> *const void;
     pub fn lua_tothread(L: *mut lua_State, idx: int) -> *mut lua_State;
+
+    #[link_name = "lua_tolstring"]
+    pub fn lua_tolstring_(L: *mut lua_State, idx: int, len: *mut size_t) -> *const char;
 
     pub fn lua_pushnil(L: *mut lua_State);
     pub fn lua_pushnumber(L: *mut lua_State, n: lua_Number);
@@ -194,7 +198,6 @@ extern "C" {
 
     pub fn lua_gc(L: *mut lua_State, what: int, data: int) -> int;
 
-    pub fn lua_error(L: *mut lua_State) -> int;
     pub fn lua_next(L: *mut lua_State, idx: int) -> int;
     pub fn lua_concat(L: *mut lua_State, n: int);
     pub fn lua_len(L: *mut lua_State, idx: int);
@@ -219,100 +222,102 @@ extern "C" {
 
     pub fn luaL_openlibs(L: *mut lua_State);
     pub fn luaL_newstate() -> *mut lua_State;
-    pub fn luaL_error(L: *mut lua_State, info: *const char);
     pub fn luaL_setmetatable(L: *mut lua_State, tname: *const char);
     pub fn luaL_loadstring(L: *mut lua_State, p: *const char) -> int;
     pub fn luaL_loadbufferx(L: *mut lua_State, buff: *const char, sz: size_t, name: *const char, mode: *const char) -> int;
 
+    #[link_name = "lua_error"]
+    fn lua_error_(L: *mut lua_State) -> int;
+    #[link_name = "luaL_error"]
+    fn luaL_error_(L: *mut lua_State, msg: *const char) -> int;
 }
-#[inline(always)]
+
 pub fn lua_upvalueindex(i: int) -> int {
     LUA_REGISTRYINDEX - i
 }
 
-#[inline(always)]
 pub unsafe fn lua_call(L: *mut lua_State, nargs: int, nresults: int) {
     lua_callk(L, nargs, nresults, 0, None)
 }
 
-#[inline(always)]
 pub unsafe fn lua_pcall(L: *mut lua_State, nargs: int, nresults: int, errfunc: int) -> int {
     lua_pcallk(L, nargs, nresults, errfunc, 0, None)
 }
 
-#[inline(always)]
 pub unsafe fn lua_yield(L: *mut lua_State, nresults: int) -> int {
     lua_yieldk(L, nresults, 0, None)
 }
 
-#[inline(always)]
 pub unsafe fn lua_pop(L: *mut lua_State, n: int) {
     lua_settop(L, -n - 1)
 }
 
-#[inline(always)]
 pub unsafe fn lua_newtable(L: *mut lua_State) {
     lua_createtable(L, 0, 0)
 }
 
-#[inline(always)]
 pub unsafe fn lua_register(L: *mut lua_State, name: *const char, f: lua_CFunction) {
     lua_pushcfunction(L, f);
     lua_setglobal(L, name)
 }
 
-#[inline(always)]
 pub unsafe fn lua_pushcfunction(L: *mut lua_State, f: lua_CFunction) {
     lua_pushcclosure(L, f, 0)
 }
 
-#[inline(always)]
 pub unsafe fn lua_isfunction(L: *mut lua_State, idx: int) -> bool {
     lua_type(L, idx) == LUA_TFUNCTION
 }
 
-#[inline(always)]
 pub unsafe fn lua_istable(L: *mut lua_State, idx: int) -> bool {
     lua_type(L, idx) == LUA_TTABLE
 }
 
-#[inline(always)]
 pub unsafe fn lua_islightuserdata(L: *mut lua_State, idx: int) -> bool {
     lua_type(L, idx) == LUA_TLIGHTUSERDATA
 }
 
-#[inline(always)]
 pub unsafe fn lua_isnil(L: *mut lua_State, idx: int) -> bool {
     lua_type(L, idx) == LUA_TNIL
 }
 
-#[inline(always)]
 pub unsafe fn lua_isboolean(L: *mut lua_State, idx: int) -> bool {
     lua_type(L, idx) == LUA_TBOOLEAN
 }
 
-#[inline(always)]
 pub unsafe fn lua_isthread(L: *mut lua_State, idx: int) -> bool {
     lua_type(L, idx) == LUA_TTHREAD
 }
 
-#[inline(always)]
 pub unsafe fn lua_isnone(L: *mut lua_State, idx: int) -> bool {
     lua_type(L, idx) == LUA_TNONE
 }
 
-#[inline(always)]
 pub unsafe fn lua_isnoneornil(L: *mut lua_State, idx: int) -> bool {
     lua_type(L, idx) <= 0
 }
 
-#[inline(always)]
 pub unsafe fn lua_pushglobaltable(L: *mut lua_State) {
     lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS)
 }
 
-pub unsafe fn lua_tostring(L: *mut lua_State, i: int) -> *const char {
-    return lua_tolstring(L, i, ptr::null_mut());
+pub unsafe fn lua_tostring(L: *mut lua_State, i: int) -> Option<String> {
+    let cstr = lua_tolstring_(L, i, ptr::null_mut());
+    let res = CStr::from_ptr(cstr).to_str();
+    match res {
+        Ok(x) => Some(x.to_string()),
+        Err(_) => None,
+    }
+}
+
+pub unsafe fn lua_tolstring(L: *mut lua_State, i: int) -> Option<String> {
+    let mut size: size_t = 0;
+    let cstr = lua_tolstring_(L, i, &mut size);
+    let bytes = std::slice::from_raw_parts(cstr as *const u8, size);
+    match std::str::from_utf8(bytes) {
+        Ok(v) => Some(v.to_string()),
+        Err(_) => None,
+    }
 }
 
 pub unsafe fn lua_tonumber(L: *mut lua_State, i: int) -> lua_Number {
@@ -338,6 +343,16 @@ pub unsafe fn lua_insert(L: *mut lua_State, idx: int) {
 
 pub unsafe fn luaL_loadbuffer(L: *mut lua_State, buff: *const char, sz: size_t, name: *const char) -> int {
     luaL_loadbufferx(L, buff, sz, name, ptr::null_mut())
+}
+
+pub unsafe fn lua_error(L: *mut lua_State) -> ! {
+    lua_error_(L);
+    unreachable!();
+}
+
+pub unsafe fn luaL_error(L: *mut lua_State, msg: *const char) -> ! {
+    luaL_error_(L, msg);
+    unreachable!();
 }
 
 impl default::Default for lua_Debug {
