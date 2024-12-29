@@ -85,13 +85,13 @@ pub type lua_Unsigned               = libc::c_ulong;
 
 #[repr(C)]
 pub struct lua_State;
-pub type lua_CFunction  = extern "C" fn(L: *mut lua_State) -> int;
-pub type lua_Hook       = extern "C" fn(L: *mut lua_State, ar: *mut lua_Debug);
-pub type lua_Reader     = extern "C" fn(L: *mut lua_State, ud: *mut void, sz: *mut size_t) -> *const char;
-pub type lua_Writer     = extern "C" fn(L: *mut lua_State, p: *const void, sz: size_t, ud: *mut void) -> int;
-pub type lua_Alloc      = extern "C" fn(ud: *mut void, ptr: *mut void, osize: size_t, nsize: size_t) -> *mut void;
+pub type lua_CFunction  = fn(L: *mut lua_State) -> int;
+pub type lua_Hook       = fn(L: *mut lua_State, ar: *mut lua_Debug);
+pub type lua_Reader     = fn(L: *mut lua_State, ud: *mut void, sz: *mut size_t) -> *const char;
+pub type lua_Writer     = fn(L: *mut lua_State, p: *const void, sz: size_t, ud: *mut void) -> int;
+pub type lua_Alloc      = fn(ud: *mut void, ptr: *mut void, osize: size_t, nsize: size_t) -> *mut void;
 
-pub extern "C" fn null_function(_: *mut lua_State) -> int { 0 }
+pub fn null_function(_: *mut lua_State) -> int { 0 }
 
 #[repr(C)]
 #[allow(missing_copy_implementations)]

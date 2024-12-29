@@ -7,7 +7,7 @@ resolver = "2"
 members = [
     "extend/lua",
     "extend/ljson",
-    "extend/lstdfs",
+    "extend/stdfs",
     "core/quanta",
 ]
 

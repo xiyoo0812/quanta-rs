@@ -162,19 +162,23 @@ pub unsafe fn decode_core(L: *mut lua_State, numkeyable: bool, json: String) -> 
     }
 }
 
-pub unsafe fn decode_impl(L: *mut lua_State) -> int {
-    let json = lua::lua_tolstring(L, 1).unwrap_or_default();
-    let numkeyable = lua::lua_toboolean(L, 2) != 0;
-    return decode_core(L, numkeyable, json);
+pub fn decode_impl(L: *mut lua_State) -> int {
+    unsafe {
+        let json = lua::lua_tolstring(L, 1).unwrap_or_default();
+        let numkeyable = lua::lua_toboolean(L, 2) != 0;
+        return decode_core(L, numkeyable, json);
+    }
 }
 
-pub unsafe fn encode_impl(L: *mut lua_State) -> int {
-    let emy_as_arr = lua::lua_toboolean(L, 2) != 0;
-    let val = encode_one(L, emy_as_arr, 1, 0);
-    let x = serde_json::to_string(&val);
-    match x {
-        Ok(x) => lua::lua_pushlstring(L, x.as_ptr() as *const i8, x.len() as usize),
-        Err(_) => lua::luaL_error(L, cstr!("encode can't pack too depth table")),
+pub fn encode_impl(L: *mut lua_State) -> int {
+    unsafe {
+        let emy_as_arr = lua::lua_toboolean(L, 2) != 0;
+        let val = encode_one(L, emy_as_arr, 1, 0);
+        let x = serde_json::to_string(&val);
+        match x {
+            Ok(x) => lua::lua_pushlstring(L, x.as_ptr() as *const i8, x.len() as usize),
+            Err(_) => lua::luaL_error(L, cstr!("encode can't pack too depth table")),
+        }
+        return 1;
     }
-    return 1;
 }
