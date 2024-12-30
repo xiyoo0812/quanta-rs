@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 #![allow(dead_code)]
 
 use lua::lua_State;

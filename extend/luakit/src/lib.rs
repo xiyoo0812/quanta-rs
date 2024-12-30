@@ -2,5 +2,6 @@
 extern crate lua;
 extern crate libc;
 
-pub mod luabase;
-pub mod luakit;
+pub mod lua_base;
+pub mod lua_function;
+pub mod lua_kit;
