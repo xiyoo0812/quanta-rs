@@ -1,13 +1,8 @@
-[workspace.lints.rust]
-# unsafe_code = "forbid"
-# unused = "allow" # For experimental dev.
-
 [workspace]
 resolver = "2"
 members = [
     "extend/lua",
     "extend/ljson",
-    "extend/stdfs",
     "core/quanta",
 ]
 
