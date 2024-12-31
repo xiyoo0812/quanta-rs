@@ -22,7 +22,7 @@ impl Drop for LuaGuard {
     }
 }
 
-unsafe fn is_lua_array(L: *mut lua_State, idx: i32, emy_as_arr: bool) -> bool {
+pub unsafe fn is_lua_array(L: *mut lua_State, idx: i32, emy_as_arr: bool) -> bool {
     if lua::lua_type(L, idx) != lua::LUA_TTABLE { return false; }
     let raw_len = lua::lua_rawlen(L, idx) as isize;
     if raw_len == 0 && !emy_as_arr { return false; }

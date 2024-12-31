@@ -11,3 +11,13 @@ local a = {a = 1, b =2}
 for k, v in pairs(a) do
 	print(k, v)
 end
+
+local json = require "ljson"
+local e = json.encode(a)
+
+print("json encode:", e)
+
+local d = json.decode(e)
+for k, v in pairs(d) do
+	print("json decode:", k, v)
+end

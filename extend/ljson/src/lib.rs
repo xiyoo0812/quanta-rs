@@ -2,6 +2,7 @@
 
 extern crate lua;
 extern crate libc;
+extern crate luakit;
 
 mod json;
 

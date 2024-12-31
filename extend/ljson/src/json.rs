@@ -10,23 +10,6 @@ use serde_json::{ json, Map, Number, Value };
 
 pub const MAX_ENCODE_DEPTH: u32     = 16;
 
-unsafe fn is_lua_array(L: *mut lua_State, idx: i32, emy_as_arr: bool) -> bool {
-    if lua::lua_type(L, idx) != lua::LUA_TTABLE { return false; }
-    let raw_len = lua::lua_rawlen(L, idx) as isize;
-    if raw_len == 0 && !emy_as_arr { return false; }
-    let index = lua::lua_absindex(L, idx);
-    lua::lua_pushnil(L);
-    let mut curlen : isize = 0;
-    while lua::lua_next(L, index) != 0 {
-        if lua::lua_isinteger(L, -2) == 0 { return false; }
-        let key = lua::lua_tointeger(L, -2);
-        if key <= 0 || key > raw_len { return false; }
-        lua::lua_pop(L, 1);
-        curlen += 1;
-    }
-    return curlen == raw_len;
-}
-
 unsafe fn encode_number(L: *mut lua_State, idx: i32) -> Value {
     if lua::lua_isinteger(L, idx) == 1 {
         let val = lua::lua_tointeger(L, idx);
@@ -64,7 +47,7 @@ unsafe fn encode_array(L: *mut lua_State, emy_as_arr: bool, index: i32, depth: u
 
 unsafe fn encode_table(L: *mut lua_State, emy_as_arr: bool, idx: i32, depth: u32) -> Value {
     let index = lua::lua_absindex(L, idx);
-    if !is_lua_array(L, index, emy_as_arr) {
+    if !luakit::is_lua_array(L, index, emy_as_arr) {
         lua::lua_pushnil(L);
         let mut valmap = Map::new();
         while lua::lua_next(L, index) != 0 {
