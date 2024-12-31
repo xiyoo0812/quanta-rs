@@ -16,7 +16,7 @@
             "program": "${workspaceFolder}/target/debug/quanta.exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceRoot}",
+            "cwd": "${workspaceRoot}/bin/",
             "environment": [],
             "externalConsole": true
         }

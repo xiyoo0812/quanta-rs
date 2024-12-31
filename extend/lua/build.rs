@@ -2,7 +2,7 @@ extern crate cc;
 
 fn main() {
     let mut build = cc::Build::new();
-    build.file("lua/onelua.c").define("MAKE_LUA", "1");
+    build.file("lua/onelua.c").define("MAKE_LIB", "1");
 
     if cfg!(windows) {
         build.define("LUA_USE_WINDOWS", "1");

@@ -9,5 +9,5 @@ edition = "2021"
 crate-type =["cdylib"]
 
 [dependencies]
-libc = "^0.2.1"
+libc = "0.2.169"
 lua = { path = "../lua"}
