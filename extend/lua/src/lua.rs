@@ -236,6 +236,7 @@ extern "C" {
     pub fn luaL_setmetatable(L: *mut lua_State, tname: *const char);
     pub fn luaL_loadstring(L: *mut lua_State, p: *const char) -> int;
     pub fn luaL_loadbufferx(L: *mut lua_State, buff: *const char, sz: size_t, name: *const char, mode: *const char) -> int;
+    pub fn luaL_loadfilex(L: *mut lua_State, file: *const char, mode: *const char) -> int;
 
     #[link_name = "lua_error"]
     fn lua_error_(L: *mut lua_State) -> int;
@@ -353,7 +354,11 @@ pub unsafe fn lua_insert(L: *mut lua_State, idx: int) {
 }
 
 pub unsafe fn luaL_loadbuffer(L: *mut lua_State, buff: *const char, sz: size_t, name: *const char) -> int {
-    luaL_loadbufferx(L, buff, sz, name, ptr::null_mut())
+    return luaL_loadbufferx(L, buff, sz, name, ptr::null_mut())
+}
+
+pub unsafe fn luaL_loadfile(L: *mut lua_State, file: *const char) -> int {
+    return luaL_loadfilex(L, file, ptr::null_mut())
 }
 
 pub unsafe fn lua_error(L: *mut lua_State) -> ! {

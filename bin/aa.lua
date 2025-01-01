@@ -21,3 +21,7 @@ local d = json.decode(e)
 for k, v in pairs(d) do
 	print("json decode:", k, v)
 end
+
+function test()
+	print("test func call")
+end
