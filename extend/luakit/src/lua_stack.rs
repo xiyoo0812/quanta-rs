@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 use lua::lua_State;
-use std::ffi::CString;
+use std::{collections::HashMap, ffi::CString};
 
 pub trait LuaPush {
     fn native_to_lua(self, L: *mut lua_State) -> i32;
@@ -57,6 +57,64 @@ impl<'s> LuaPush for &'s str {
             unsafe { lua::lua_pushstring(L, value.as_ptr()) };
             1
         }
+    }
+}
+
+impl<T> LuaPush for Vec<T> where T: LuaPush {
+    fn native_to_lua(self, L: *mut lua_State) -> i32 {
+        unsafe {
+            lua::lua_createtable(L, self.len() as i32, 0);
+            for (i, item) in self.into_iter().enumerate() {
+                item.native_to_lua(L);
+                lua::lua_rawseti(L, -2, (i + 1) as i32);
+            }
+            1
+        }
+    }
+}
+
+impl<T> LuaRead for Vec<T> where T: LuaRead {
+    fn lua_to_native(L: *mut lua_State, index: i32) -> Option<Vec<T>> {
+        let mut vec = Vec::new();
+        unsafe {
+            let len = lua::lua_rawlen(L, index);
+            for i in 1..len + 1 {
+                lua::lua_rawgeti(L, index, i as i32);
+                vec.push(T::lua_to_native(L, i as i32).unwrap());
+                lua::lua_pop(L, 1);
+            }
+        }
+        Some(vec)
+    }
+}
+
+impl<K, V> LuaPush for HashMap<K, V> where K: LuaPush, V: LuaPush {
+    fn native_to_lua(self, L: *mut lua_State) -> i32 {
+        unsafe {
+            lua::lua_createtable(L, 0, self.len() as i32);
+            for (key, value) in self.into_iter() {
+                key.native_to_lua(L);
+                value.native_to_lua(L);
+                lua::lua_settable(L, -3);
+            }
+            1
+        }
+    }
+}
+
+impl<K, V> LuaRead for HashMap<K, V> where K: LuaRead + Eq + std::hash::Hash, V: LuaRead {
+    fn lua_to_native(L: *mut lua_State, index: i32) -> Option<HashMap<K, V>> {
+        let mut map = HashMap::new();
+        unsafe {
+            lua::lua_pushnil(L);
+            while  lua::lua_next(L, index) != 0 {
+                let key = K::lua_to_native(L, -2).unwrap();
+                let val = V::lua_to_native(L, -1).unwrap();
+                map.insert(key, val);
+                lua::lua_pop(L, 1);
+            }
+        }
+        Some(map)
     }
 }
 
