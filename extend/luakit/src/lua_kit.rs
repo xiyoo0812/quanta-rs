@@ -2,11 +2,13 @@
 #![allow(dead_code)]
 
 use lua::lua_State;
-use libc::{c_char as char, SIGINT};
+use libc::c_char as char;
 
 use crate::lua_stack::*;
 use crate::lua_function::*;
 use crate::lua_base::LuaGuard;
+use crate::lua_reference::Reference;
+use crate::lua_call_function_impl;
 
 pub struct Luakit {
     m_L: *mut lua_State,
@@ -58,7 +60,7 @@ impl Luakit {
             print!("lua loadstring err: {}", err);
             return Err(err);
         }
-        return lua_call_function(self.m_L, 0, 0);SIGINT
+        return lua_call_function(self.m_L, 0, 0);
     }
 
     pub unsafe fn call(&mut self) ->Result<bool, String> {

@@ -25,3 +25,8 @@ end
 function test()
 	print("test func call")
 end
+
+function test1(a, b)
+	print("test1 func call, args: ", a, b)
+	return a, a + b, "ABC"
+end

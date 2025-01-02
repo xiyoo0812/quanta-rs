@@ -1,13 +1,10 @@
 #![allow(non_snake_case)]
 #![allow(unused_macros)]
-#![allow(unused_mut)]
 #![allow(dead_code)]
 
 use libc::c_int as int;
 use libc::c_char as char;
 use lua::{ cstr, lua_State };
-
-use crate::lua_stack::*;
 
 //get global function
 //-------------------------------------------------------------------------------
@@ -45,23 +42,27 @@ pub unsafe fn call_global_function(L: *mut lua_State, func: *const char, arg_cou
     return lua_call_function(L, arg_count, ret_count);
 }
 
+#[macro_export]
 macro_rules! lua_call_function_impl {
     ($name:ident, $($p:ident),*) => {
-        pub unsafe fn $name<R, $($p),*>(&mut self, func: *const char, nret: int, $($p : $p, )*) -> Result<Vec<R>, String> where R: LuaRead, $($p : LuaPush),* {
-            if !luakit::get_global_function(self.m_L, func) {
+        #[allow(unused_mut)]
+        pub unsafe fn $name<$($p),*>(&mut self, func: *const char, retc: i32, $($p : $p, )*) -> Result<Vec<Reference>, String> where $($p : LuaPush),* {
+            if !get_global_function(self.m_L, func) {
                 return Err("function not found".to_string());
             }
-            let mut index = 0;
-            $(index += $p.push_to_lua(self.m_L);)*
-            let res = luakit::lua_call_function(self.m_L, index, nret);
+            let mut argc = 0;
+            $(
+                argc += $p.native_to_lua(self.m_L);
+            )*
+            let res = lua_call_function(self.m_L, argc, retc);
             match res {
                 Err(e) => return Err(e),
                 Ok(_) => {
                     let mut ret = Vec::new();
-                    for i in 0..nret {
-                        ret.push(LuaRead::lua_to_native(self.m_L, -(nret - i)));
+                    for i in 0..retc {
+                        ret.push(LuaRead::lua_to_native(self.m_L, -(retc - i)).unwrap());
                     }
-                    lua::lua_pop(self.m_L, nret);
+                    lua::lua_pop(self.m_L, retc);
                     return Ok(ret);
                 }
             }

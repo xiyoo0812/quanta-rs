@@ -79,6 +79,9 @@ pub const LUAI_MAXSTACK: int        = 1000000;  // or 15000 with 32b    // TODO:
 pub const LUAI_FIRSTPSEUDOIDX: int  = -LUAI_MAXSTACK - 1000;
 pub const LUA_REGISTRYINDEX: int    = LUAI_FIRSTPSEUDOIDX;
 
+pub const LUA_NOREF: int            = -2;
+pub const LUA_REFNIL: int           = -1;
+
 pub type lua_Number                 = libc::c_double;
 pub type lua_Integer                = libc::ptrdiff_t;
 pub type lua_Unsigned               = libc::c_ulong;
@@ -237,6 +240,9 @@ extern "C" {
     pub fn luaL_loadstring(L: *mut lua_State, p: *const char) -> int;
     pub fn luaL_loadbufferx(L: *mut lua_State, buff: *const char, sz: size_t, name: *const char, mode: *const char) -> int;
     pub fn luaL_loadfilex(L: *mut lua_State, file: *const char, mode: *const char) -> int;
+
+    pub fn luaL_ref(L: *mut lua_State, t: int) -> int;
+    pub fn luaL_unref(L: *mut lua_State, t: int, iref: int);
 
     #[link_name = "lua_error"]
     fn lua_error_(L: *mut lua_State) -> int;

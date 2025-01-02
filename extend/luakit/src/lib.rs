@@ -5,6 +5,9 @@ extern crate libc;
 pub mod lua_kit;
 pub mod lua_base;
 pub mod lua_stack;
+pub mod lua_reference;
+
+#[macro_use]
 pub mod lua_function;
 
 pub use lua_kit::*;
