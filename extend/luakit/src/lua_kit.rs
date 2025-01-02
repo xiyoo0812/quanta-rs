@@ -2,8 +2,9 @@
 #![allow(dead_code)]
 
 use lua::lua_State;
-use libc::c_char as char;
+use libc::{c_char as char, SIGINT};
 
+use crate::lua_stack::*;
 use crate::lua_function::*;
 use crate::lua_base::LuaGuard;
 
@@ -40,14 +41,6 @@ impl Luakit {
     //     return lua_to_native<V>(self.m_L, -1);
     // }
     
-    pub unsafe fn call_function(&mut self, func: *const char) ->Result<bool, String> {
-        return call_global_function(self.m_L, func, 0, 0);
-    }
-
-    pub unsafe fn call(&mut self) ->Result<bool, String> {
-        return lua_call_function(self.m_L, 0, 0);
-    }
-
     pub unsafe fn run_file(&mut self, file: *const char) ->Result<bool, String> {
         let _ = LuaGuard::new(self.m_L);
         if lua::luaL_loadfile(self.m_L, file) == 1 {
@@ -65,8 +58,28 @@ impl Luakit {
             print!("lua loadstring err: {}", err);
             return Err(err);
         }
+        return lua_call_function(self.m_L, 0, 0);SIGINT
+    }
+
+    pub unsafe fn call(&mut self) ->Result<bool, String> {
         return lua_call_function(self.m_L, 0, 0);
     }
+
+    pub unsafe fn call_function(&mut self, func: *const char) ->Result<bool, String> {
+        return call_global_function(self.m_L, func, 0, 0);
+    }
+
+    lua_call_function_impl!(call_lua, );
+    lua_call_function_impl!(call_lua1, A);
+    lua_call_function_impl!(call_lua2, A, B);
+    lua_call_function_impl!(call_lua3, A, B, C);
+    lua_call_function_impl!(call_lua4, A, B, C, D);
+    lua_call_function_impl!(call_lua5, A, B, C, D, E);
+    lua_call_function_impl!(call_lua6, A, B, C, D, E, F);
+    lua_call_function_impl!(call_lua7, A, B, C, D, E, F, G);
+    lua_call_function_impl!(call_lua8, A, B, C, D, E, F, G, H);
+    lua_call_function_impl!(call_lua9, A, B, C, D, E, F, G, H, I);
+    lua_call_function_impl!(call_lua10, A, B, C, D, E, F, G, H, I, J);
 }
 
 impl Drop for Luakit {

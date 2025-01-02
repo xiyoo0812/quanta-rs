@@ -1,81 +1,119 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-use std::rc::Rc;
-use std::any::Any;
-use std::cell::RefCell;
+use std::ffi::CString;
 
 use libc::c_int as int;
 use lua::{ cstr, lua_State };
 
-pub trait LuaNative  {
-    unsafe fn push(&self, L: *mut lua_State);
-    unsafe fn pull(&mut self, L: *mut lua_State, idx: int);
+pub trait LuaPush {
+    fn native_to_lua(self, lua: *mut lua_State) -> i32;
 }
 
-impl LuaNative for bool {
-    unsafe fn push(&self, L: *mut lua_State) { lua::lua_pushboolean(L, *self as int); }
-    unsafe fn pull(&mut self, L: *mut lua_State, idx: int) { *self = lua::lua_toboolean(L, idx) != 0; }
-}
-impl LuaNative for i32 {
-    unsafe fn push(&self, L: *mut lua_State) { lua::lua_pushinteger(L, *self as lua::lua_Integer); }
-    unsafe fn pull(&mut self, L: *mut lua_State, idx: int) { *self = lua::lua_tointeger(L, idx) as i32; }
-}
-impl LuaNative for u32 {
-    unsafe fn push(&self, L: *mut lua_State) { lua::lua_pushinteger(L, *self as lua::lua_Integer); }
-    unsafe fn pull(&mut self, L: *mut lua_State, idx: int) { *self = lua::lua_tointeger(L, idx) as u32; }
-}
-impl LuaNative for i64 {
-    unsafe fn push(&self, L: *mut lua_State) { lua::lua_pushinteger(L, *self as lua::lua_Integer); }
-    unsafe fn pull(&mut self, L: *mut lua_State, idx: int) { *self = lua::lua_tointeger(L, idx) as i64; }
-}
-impl LuaNative for u64 {
-    unsafe fn push(&self, L: *mut lua_State) { lua::lua_pushinteger(L, *self as lua::lua_Integer); }
-    unsafe fn pull(&mut self, L: *mut lua_State, idx: int) { *self = lua::lua_tointeger(L, idx) as u64; }
-}
-impl LuaNative for f32 {
-    unsafe fn push(&self, L: *mut lua_State) { lua::lua_pushnumber(L, *self as lua::lua_Number); }
-    unsafe fn pull(&mut self, L: *mut lua_State, idx: int) { *self = lua::lua_tonumber(L, idx) as f32; }
-}
-impl LuaNative for f64 {
-    unsafe fn push(&self, L: *mut lua_State) { lua::lua_pushnumber(L, *self as f64); }
-    unsafe fn pull(&mut self, L: *mut lua_State, idx: int) { *self = lua::lua_tonumber(L, idx) as f64; }
+pub trait LuaRead: Sized {
+    fn lua_to_native(lua: *mut lua_State, index: i32) -> Option<Self>;
 }
 
-pub unsafe fn lua_to_native(L: *mut lua_State, idx: int) -> Rc<RefCell<dyn Any>> {
-    let ttype = lua::lua_type(L, idx);
-    match ttype {
-        lua::LUA_TBOOLEAN => Rc::new(RefCell::new(lua::lua_toboolean(L, idx) != 0)),
-        lua::LUA_TSTRING => Rc::new(RefCell::new(lua::lua_tolstring(L, idx).unwrap())),
-        lua::LUA_TNUMBER => {
-            if lua::lua_isinteger(L, idx) == 1 {
-                Rc::new(RefCell::new(lua::lua_tointeger(L, idx)))
-            } else {
-                Rc::new(RefCell::new(lua::lua_tonumber(L, idx)))
+impl LuaPush for bool {
+    fn native_to_lua(self, lua: *mut lua_State) -> i32 {
+        unsafe { lua::lua_pushboolean(lua, self.clone() as libc::c_int) };
+        1
+    }
+}
+
+impl LuaRead for bool {
+    fn lua_to_native(lua: *mut lua_State, index: i32, _pop: i32) -> Option<bool> {
+        if unsafe { lua::lua_isboolean(lua, index) } != true {
+            return None;
+        }
+        Some(unsafe { lua::lua_toboolean(lua, index) != 0 })
+    }
+}
+
+impl LuaPush for String {
+    fn native_to_lua(self, lua: *mut lua_State) -> i32 {
+        if let Some(value) = CString::new(&self[..]).ok() {
+            unsafe { lua::lua_pushstring(lua, value.as_ptr()) };
+            1
+        } else {
+            let value = CString::new(&"UNVAILED STRING"[..]).unwrap();
+            unsafe { lua::lua_pushstring(lua, value.as_ptr()) };
+            1
+        }
+    }
+}
+
+impl LuaRead for String {
+    fn lua_to_native(lua: *mut lua_State, index: i32, _pop: i32) -> Option<String> {
+        return unsafe { lua::lua_tolstring(lua, index) };
+    }
+}
+
+impl<'s> LuaPush for &'s str {
+    fn native_to_lua(self, lua: *mut lua_State) -> i32 {
+        if let Some(value) = CString::new(&self[..]).ok() {
+            unsafe { lua::lua_pushstring(lua, value.as_ptr()) };
+            1
+        } else {
+            let value = CString::new(&"UNVAILED STRING"[..]).unwrap();
+            unsafe { lua::lua_pushstring(lua, value.as_ptr()) };
+            1
+        }
+    }
+}
+
+macro_rules! integer_impl(
+    ($t:ident) => (
+        impl LuaPush for $t {
+            fn native_to_lua(self, lua: *mut lua_State) -> i32 {
+                unsafe { lua::lua_pushinteger(lua, self as lua::lua_Integer) };
+                1
             }
-        },
-        lua::LUA_TTABLE => {
-            lua::lua_getfield(L, idx, cstr!("__pointer__"));
-            let rc = lua::lua_touserdata(L, -1) as *mut Rc<RefCell<dyn Any>>;
-            lua::lua_pop(L, 1);
-            return rc.as_ref().unwrap().clone();
-        },
-        lua::LUA_TLIGHTUSERDATA => {
-            let rc = lua::lua_touserdata(L, idx) as *mut Rc<RefCell<dyn Any>>;
-            return rc.as_ref().unwrap().clone();
-        },
-        lua::LUA_TUSERDATA => {
-            let rc = lua::lua_touserdata(L, idx) as *mut Rc<RefCell<dyn Any>>;
-            return rc.as_ref().unwrap().clone();
-        },
-        _ => Rc::new(RefCell::new(()))
-    }
-}
+        }
+        impl LuaRead for $t {
+            fn lua_to_native(lua: *mut lua_State, index: i32) -> Option<$t> {
+                let mut success = 0;
+                let val = unsafe { lua::lua_tointegerx(lua, index, &mut success) };
+                match success {
+                    0 => None,
+                    _ => Some(val as $t)
+                }
+            }
+        }
+    );
+);
 
-pub unsafe fn lua_to_native_mutil(L: *mut lua_State, len : int) -> Vec<Rc<RefCell<dyn Any>>> {
-    let mut vec = Vec::with_capacity(len as usize);
-    for i in 0..len {
-        vec.push(lua_to_native(L, (i - len) as int));
-    }
-    return vec;
-}
+macro_rules! numeric_impl(
+    ($t:ident) => (
+        impl LuaPush for $t {
+            fn native_to_lua(self, lua: *mut lua_State) -> i32 {
+                unsafe { lua::lua_pushnumber(lua, self as lua::lua_Integer) };
+                1
+            }
+        }
+        impl LuaRead for $t {
+            fn lua_to_native(lua: *mut lua_State, index: i32) -> Option<$t> {
+                let mut success = 0;
+                let val = unsafe { lua::lua_tonumberx(lua, index, &mut success) };
+                match success {
+                    0 => None,
+                    _ => Some(val as $t)
+                }
+            }
+        }
+    );
+);
+
+
+integer_impl!(i8);
+integer_impl!(u8);
+integer_impl!(i16);
+integer_impl!(u16);
+integer_impl!(i32);
+integer_impl!(u32);
+integer_impl!(i64);
+integer_impl!(u64);
+integer_impl!(usize);
+
+numeric_impl!(f32);
+numeric_impl!(f64);
