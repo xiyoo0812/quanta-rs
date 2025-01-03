@@ -4,22 +4,12 @@
 use lua::lua_State;
 use libc::c_int as int;
 
+use crate::lua_base::LuaGuard;
 use crate::lua_stack::{LuaRead, LuaPush};
 
 pub struct Reference {
     m_index: int,
     m_L: *mut lua_State,
-}
-
-macro_rules! refenerce_get {
-    ($name:ident) => {
-        pub unsafe fn $name<R>(&mut self) -> Option<R> where R: LuaRead {
-            lua::lua_rawgeti(self.m_L, lua::LUA_REGISTRYINDEX, self.m_index);
-            let ret = LuaRead::lua_to_native(self.m_L, -1);
-            lua::lua_pop(self.m_L, 1);
-            return ret;
-        }
-    }
 }
 
 impl Reference {
@@ -30,14 +20,11 @@ impl Reference {
         }
     }
 
-    refenerce_get!(get_i32);
-    refenerce_get!(get_u32);
-    refenerce_get!(get_i64);
-    refenerce_get!(get_u64);
-    refenerce_get!(get_f32);
-    refenerce_get!(get_f64);
-    refenerce_get!(get_str);
-    refenerce_get!(get_string);
+    pub fn get<R>(&mut self) -> Option<R> where R: LuaRead {
+        let _ = LuaGuard::new(self.m_L);
+        unsafe { lua::lua_rawgeti(self.m_L, lua::LUA_REGISTRYINDEX, self.m_index); }
+        return LuaRead::lua_to_native(self.m_L, -1);
+    }
 }
 
 impl Drop for Reference {

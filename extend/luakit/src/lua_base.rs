@@ -22,17 +22,25 @@ impl Drop for LuaGuard {
     }
 }
 
-pub unsafe fn is_lua_array(L: *mut lua_State, idx: i32, emy_as_arr: bool) -> bool {
-    if lua::lua_type(L, idx) != lua::LUA_TTABLE { return false; }
-    let raw_len = lua::lua_rawlen(L, idx) as isize;
-    if raw_len == 0 && !emy_as_arr { return false; }
-    let index = lua::lua_absindex(L, idx);
-    lua::lua_pushnil(L);
+pub fn is_lua_array(L: *mut lua_State, idx: i32, emy_as_arr: bool) -> bool {
+    if !lua::lua_istable(L, idx) {
+        return false;
+    }
+    let raw_len = unsafe { lua::lua_rawlen(L, idx) as isize };
+    if raw_len == 0 && !emy_as_arr {
+        return false;
+    }
+    let index = unsafe { lua::lua_absindex(L, idx) };
+    unsafe { lua::lua_pushnil(L) };
     let mut curlen : isize = 0;
-    while lua::lua_next(L, index) != 0 {
-        if lua::lua_isinteger(L, -2) == 0 { return false; }
+    while unsafe { lua::lua_next(L, index) } != 0 {
+        if unsafe { lua::lua_isinteger(L, -2)} == 0 {
+            return false;
+        }
         let key = lua::lua_tointeger(L, -2);
-        if key <= 0 || key > raw_len { return false; }
+        if key <= 0 || key > raw_len {
+            return false;
+        }
         lua::lua_pop(L, 1);
         curlen += 1;
     }

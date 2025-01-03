@@ -266,115 +266,123 @@ pub unsafe fn lua_yield(L: *mut lua_State, nresults: int) -> int {
     lua_yieldk(L, nresults, 0, None)
 }
 
-pub unsafe fn lua_pop(L: *mut lua_State, n: int) {
-    lua_settop(L, -n - 1)
+pub fn lua_pop(L: *mut lua_State, n: int) {
+    unsafe { lua_settop(L, -n - 1) }
 }
 
-pub unsafe fn lua_newtable(L: *mut lua_State) {
-    lua_createtable(L, 0, 0)
+pub fn lua_newtable(L: *mut lua_State) {
+    unsafe { lua_createtable(L, 0, 0) }
 }
 
-pub unsafe fn lua_register(L: *mut lua_State, name: *const char, f: lua_CFunction) {
-    lua_pushcfunction(L, f);
-    lua_setglobal(L, name)
+pub fn lua_register(L: *mut lua_State, name: *const char, f: lua_CFunction) {
+    unsafe {
+        lua_pushcfunction(L, f);
+        lua_setglobal(L, name);
+    }
 }
 
-pub unsafe fn lua_pushcfunction(L: *mut lua_State, f: lua_CFunction) {
-    lua_pushcclosure(L, f, 0)
+pub fn lua_pushcfunction(L: *mut lua_State, f: lua_CFunction) {
+    unsafe { lua_pushcclosure(L, f, 0) }
 }
 
-pub unsafe fn lua_isfunction(L: *mut lua_State, idx: int) -> bool {
-    lua_type(L, idx) == LUA_TFUNCTION
+pub fn lua_isfunction(L: *mut lua_State, idx: int) -> bool {
+    unsafe { lua_type(L, idx) == LUA_TFUNCTION }
 }
 
-pub unsafe fn lua_istable(L: *mut lua_State, idx: int) -> bool {
-    lua_type(L, idx) == LUA_TTABLE
+pub fn lua_istable(L: *mut lua_State, idx: int) -> bool {
+    unsafe { lua_type(L, idx) == LUA_TTABLE }
 }
 
-pub unsafe fn lua_islightuserdata(L: *mut lua_State, idx: int) -> bool {
-    lua_type(L, idx) == LUA_TLIGHTUSERDATA
+pub fn lua_islightuserdata(L: *mut lua_State, idx: int) -> bool {
+    unsafe { lua_type(L, idx) == LUA_TLIGHTUSERDATA }
 }
 
-pub unsafe fn lua_isnil(L: *mut lua_State, idx: int) -> bool {
-    lua_type(L, idx) == LUA_TNIL
+pub fn lua_isnil(L: *mut lua_State, idx: int) -> bool {
+    unsafe { lua_type(L, idx) == LUA_TNIL }
 }
 
-pub unsafe fn lua_isboolean(L: *mut lua_State, idx: int) -> bool {
-    lua_type(L, idx) == LUA_TBOOLEAN
+pub fn lua_isboolean(L: *mut lua_State, idx: int) -> bool {
+    unsafe { lua_type(L, idx) == LUA_TBOOLEAN }
 }
 
-pub unsafe fn lua_isthread(L: *mut lua_State, idx: int) -> bool {
-    lua_type(L, idx) == LUA_TTHREAD
+pub fn lua_isthread(L: *mut lua_State, idx: int) -> bool {
+    unsafe { lua_type(L, idx) == LUA_TTHREAD }
 }
 
-pub unsafe fn lua_isnone(L: *mut lua_State, idx: int) -> bool {
-    lua_type(L, idx) == LUA_TNONE
+pub fn lua_isnone(L: *mut lua_State, idx: int) -> bool {
+    unsafe { lua_type(L, idx) == LUA_TNONE }
 }
 
-pub unsafe fn lua_isnoneornil(L: *mut lua_State, idx: int) -> bool {
-    lua_type(L, idx) <= 0
+pub fn lua_isnoneornil(L: *mut lua_State, idx: int) -> bool {
+    unsafe { lua_type(L, idx) <= 0 }
 }
 
-pub unsafe fn lua_pushglobaltable(L: *mut lua_State) {
-    lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS)
+pub fn lua_pushglobaltable(L: *mut lua_State) {
+    unsafe { lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS) }
 }
 
-pub unsafe fn lua_tostring(L: *mut lua_State, i: int) -> Option<String> {
-    let cstr = lua_tolstring_(L, i, ptr::null_mut());
-    let res = CStr::from_ptr(cstr).to_str();
+pub fn lua_tostring(L: *mut lua_State, i: int) -> Option<String> {
+    let cstr = unsafe { lua_tolstring_(L, i, ptr::null_mut()) };
+    let res = unsafe { CStr::from_ptr(cstr).to_str() };
     match res {
         Ok(x) => Some(x.to_string()),
         Err(_) => None,
     }
 }
 
-pub unsafe fn lua_tolstring(L: *mut lua_State, i: int) -> Option<String> {
+pub fn lua_tolstring(L: *mut lua_State, i: int) -> Option<String> {
     let mut size: size_t = 0;
-    let cstr = lua_tolstring_(L, i, &mut size);
-    let bytes = std::slice::from_raw_parts(cstr as *const u8, size);
+    let cstr = unsafe { lua_tolstring_(L, i, &mut size) };
+    let bytes = unsafe { std::slice::from_raw_parts(cstr as *const u8, size) };
     match std::str::from_utf8(bytes) {
         Ok(v) => Some(v.to_string()),
         Err(_) => None,
     }
 }
 
-pub unsafe fn lua_tonumber(L: *mut lua_State, i: int) -> lua_Number {
-    return lua_tonumberx(L, i, ptr::null_mut());
+pub fn lua_tonumber(L: *mut lua_State, i: int) -> lua_Number {
+    unsafe {lua_tonumberx(L, i, ptr::null_mut()) }
 }
 
-pub unsafe fn lua_tointeger(L: *mut lua_State, i: int) -> lua_Integer {
-    return lua_tointegerx(L, i, ptr::null_mut());
+pub fn lua_tointeger(L: *mut lua_State, i: int) -> lua_Integer {
+    unsafe { lua_tointegerx(L, i, ptr::null_mut()) }
 }
 
-pub unsafe fn lua_tounsigned(L: *mut lua_State, i: int) -> lua_Unsigned {
-    return lua_tointegerx(L, i, ptr::null_mut()) as lua_Unsigned;
+pub fn lua_tounsigned(L: *mut lua_State, i: int) -> lua_Unsigned {
+    unsafe { lua_tointegerx(L, i, ptr::null_mut()) as lua_Unsigned }
 }
 
-pub unsafe fn lua_remove(L: *mut lua_State, idx: int) {
-    lua_rotate(L, idx, -1);
-    lua_pop(L, 1);
+pub fn lua_remove(L: *mut lua_State, idx: int) {
+    unsafe {
+        lua_rotate(L, idx, -1);
+        lua_pop(L, 1);
+    }
 }
 
-pub unsafe fn lua_insert(L: *mut lua_State, idx: int) {
-    lua_rotate(L, idx, 1);
+pub fn lua_insert(L: *mut lua_State, idx: int) {
+    unsafe { lua_rotate(L, idx, 1) }
 }
 
-pub unsafe fn luaL_loadbuffer(L: *mut lua_State, buff: *const char, sz: size_t, name: *const char) -> int {
-    return luaL_loadbufferx(L, buff, sz, name, ptr::null_mut())
+pub fn luaL_loadbuffer(L: *mut lua_State, buff: *const char, sz: size_t, name: *const char) -> int {
+    unsafe { luaL_loadbufferx(L, buff, sz, name, ptr::null_mut()) }
 }
 
-pub unsafe fn luaL_loadfile(L: *mut lua_State, file: *const char) -> int {
-    return luaL_loadfilex(L, file, ptr::null_mut())
+pub fn luaL_loadfile(L: *mut lua_State, file: *const char) -> int {
+    unsafe { luaL_loadfilex(L, file, ptr::null_mut()) }
 }
 
-pub unsafe fn lua_error(L: *mut lua_State) -> ! {
-    lua_error_(L);
-    unreachable!();
+pub fn lua_error(L: *mut lua_State) -> ! {
+    unsafe {
+        lua_error_(L);
+        unreachable!();
+    }
 }
 
-pub unsafe fn luaL_error(L: *mut lua_State, msg: *const char) -> ! {
-    luaL_error_(L, msg);
-    unreachable!();
+pub fn luaL_error(L: *mut lua_State, msg: *const char) -> ! {
+    unsafe { 
+        luaL_error_(L, msg) ;
+        unreachable!();
+    }
 }
 
 impl default::Default for lua_Debug {

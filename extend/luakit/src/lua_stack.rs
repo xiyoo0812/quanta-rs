@@ -21,7 +21,7 @@ impl LuaPush for bool {
 
 impl LuaRead for bool {
     fn lua_to_native(L: *mut lua_State, index: i32) -> Option<bool> {
-        if unsafe { lua::lua_isboolean(L, index) } != true {
+        if !lua::lua_isboolean(L, index) {
             return None;
         }
         Some(unsafe { lua::lua_toboolean(L, index) != 0 })
@@ -43,7 +43,7 @@ impl LuaPush for String {
 
 impl LuaRead for String {
     fn lua_to_native(L: *mut lua_State, index: i32) -> Option<String> {
-        return unsafe { lua::lua_tolstring(L, index) };
+        lua::lua_tolstring(L, index)
     }
 }
 
@@ -107,7 +107,7 @@ impl<K, V> LuaRead for HashMap<K, V> where K: LuaRead + Eq + std::hash::Hash, V:
         let mut map = HashMap::new();
         unsafe {
             lua::lua_pushnil(L);
-            while  lua::lua_next(L, index) != 0 {
+            while lua::lua_next(L, index) != 0 {
                 let key = K::lua_to_native(L, -2).unwrap();
                 let val = V::lua_to_native(L, -1).unwrap();
                 map.insert(key, val);

@@ -32,18 +32,18 @@ impl Luakit {
         return self.m_L;
     }
 
-    // pub fn set<V>(&mut self, name: &str, value: V) {
-    //     native_to_lua(self.m_L, value);
-    //     unsafe { lua::lua_setglobal(self.m_L, cstr(name)); }
-    // }
+    pub fn set<V>(&mut self, key: *const char, value: V) where V: LuaPush {
+        value.native_to_lua(self.m_L);
+        unsafe { lua::lua_setglobal(self.m_L, key); }
+    }
 
-    // pub fn get<V>(&mut self, name: &str) -> V {
-    //     let _ = LuaGuard::new(self.m_L);
-    //     unsafe { lua::lua_getglobal(self.m_L, cstr(name)); }
-    //     return lua_to_native<V>(self.m_L, -1);
-    // }
+    pub fn get<R>(&mut self, key: *const char) -> Option<R> where R: LuaRead {
+        let _ = LuaGuard::new(self.m_L);
+        unsafe { lua::lua_getglobal(self.m_L, key); }
+        return LuaRead::lua_to_native(self.m_L, -1);
+    }
     
-    pub unsafe fn run_file(&mut self, file: *const char) ->Result<bool, String> {
+    pub fn run_file(&mut self, file: *const char) ->Result<bool, String> {
         let _ = LuaGuard::new(self.m_L);
         if lua::luaL_loadfile(self.m_L, file) == 1 {
             let err= lua::lua_tostring(self.m_L, -1).unwrap();
@@ -53,21 +53,27 @@ impl Luakit {
         return lua_call_function(self.m_L, 0, 0);
     }
 
-    pub unsafe fn run_script(&mut self, script: *const char) ->Result<bool, String> {
+    pub fn run_script(&mut self, script: *const char) ->Result<bool, String> {
         let _ = LuaGuard::new(self.m_L);
-        if lua::luaL_loadstring(self.m_L, script) == 1 {
-            let err= lua::lua_tostring(self.m_L, -1).unwrap();
-            print!("lua loadstring err: {}", err);
-            return Err(err);
+        unsafe {
+            if lua::luaL_loadstring(self.m_L, script) == 1 {
+                let err= lua::lua_tostring(self.m_L, -1).unwrap();
+                print!("lua loadstring err: {}", err);
+                return Err(err);
+            }
         }
         return lua_call_function(self.m_L, 0, 0);
     }
 
-    pub unsafe fn call(&mut self) ->Result<bool, String> {
+    pub fn get_function(&mut self, function: *const char) -> bool {
+        return get_global_function(self.m_L, function);
+    }
+
+    pub fn call(&mut self) ->Result<bool, String> {
         return lua_call_function(self.m_L, 0, 0);
     }
 
-    pub unsafe fn call_function(&mut self, func: *const char) ->Result<bool, String> {
+    pub fn call_function(&mut self, func: *const char) ->Result<bool, String> {
         return call_global_function(self.m_L, func, 0, 0);
     }
     
