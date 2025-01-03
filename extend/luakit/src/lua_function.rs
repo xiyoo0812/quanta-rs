@@ -76,9 +76,9 @@ macro_rules! lua_call_function_impl {
 macro_rules! variadic_return_impl {
     ($name:ident, $($p:ident),*) => {
         #[allow(unused_mut)]
-        pub fn $name<$($p),*>(&mut self, $($p : $p, )*) -> i32 where $($p : LuaPush),* {
+        pub fn $name<$($p),*>(L: *mut lua_State, $($p : $p, )*) -> i32 where $($p : LuaPush),* {
             let mut argc = 0;
-            $(argc += $p.native_to_lua(self.m_L);)*
+            $(argc += $p.native_to_lua(L);)*
             return argc
         }
     }

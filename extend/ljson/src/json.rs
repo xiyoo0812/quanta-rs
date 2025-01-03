@@ -10,8 +10,8 @@ use serde_json::{ json, Map, Number, Value };
 
 pub const MAX_ENCODE_DEPTH: u32     = 16;
 
-unsafe fn encode_number(L: *mut lua_State, idx: i32) -> Value {
-    if lua::lua_isinteger(L, idx) == 1 {
+fn encode_number(L: *mut lua_State, idx: i32) -> Value {
+    if unsafe { lua::lua_isinteger(L, idx) } == 1 {
         let val = lua::lua_tointeger(L, idx);
         return json!(val);
     }
@@ -19,8 +19,8 @@ unsafe fn encode_number(L: *mut lua_State, idx: i32) -> Value {
     return json!(val);
 }
 
-unsafe fn encode_key(L: *mut lua_State, idx: i32) -> String {
-    let ttype = lua::lua_type(L, idx);
+fn encode_key(L: *mut lua_State, idx: i32) -> String {
+    let ttype = unsafe { lua::lua_type(L, idx) };
     match ttype {
         lua::LUA_TSTRING=> {
             let val: Option<String> = lua::lua_tolstring(L, idx);
@@ -72,7 +72,7 @@ pub unsafe fn encode_one(L: *mut lua_State, emy_as_arr: bool, idx: i32, depth: u
         lua::LUA_TNUMBER => return encode_number(L, idx),
         lua::LUA_TTABLE => return encode_table(L, emy_as_arr, idx, depth + 1),
         lua::LUA_TBOOLEAN => {
-            let val = ternary!(lua::lua_toboolean(L, idx) != 0, true, false);
+            let val = ternary!(lua::lua_toboolean(L, idx), true, false);
             return json!(val);
         }
         lua::LUA_TSTRING=> {
@@ -137,25 +137,23 @@ pub unsafe fn decode_one(L: *mut lua_State, value: &Value, numkeyable: bool) -> 
     return 1;
 }
 
-pub unsafe fn decode_core(L: *mut lua_State, numkeyable: bool, json: String) -> int {
+pub fn decode_core(L: *mut lua_State, numkeyable: bool, json: String) -> int {
     let res = serde_json::from_str::<Value>(&json);
     match res {
-        Ok(val) => return decode_one(L, &val, numkeyable),
+        Ok(val) => unsafe { decode_one(L, &val, numkeyable) },
         Err(_) => lua::luaL_error(L, cstr!("encode can't unpack json"))
     }
 }
 
 pub fn decode_impl(L: *mut lua_State) -> int {
-    unsafe {
-        let json = lua::lua_tolstring(L, 1).unwrap_or_default();
-        let numkeyable = lua::lua_toboolean(L, 2) != 0;
-        return decode_core(L, numkeyable, json);
-    }
+    let json = lua::lua_tolstring(L, 1).unwrap_or_default();
+    let numkeyable = lua::lua_toboolean(L, 2);
+    return decode_core(L, numkeyable, json);
 }
 
 pub fn encode_impl(L: *mut lua_State) -> int {
     unsafe {
-        let emy_as_arr = lua::lua_toboolean(L, 2) != 0;
+        let emy_as_arr = lua::lua_toboolean(L, 2);
         let val = encode_one(L, emy_as_arr, 1, 0);
         let x = serde_json::to_string(&val);
         match x {

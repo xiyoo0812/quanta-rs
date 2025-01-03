@@ -12,6 +12,13 @@ pub trait LuaRead: Sized {
     fn lua_to_native(L: *mut lua_State, index: i32) -> Option<Self>;
 }
 
+impl LuaPush for lua::LuaNil {
+    fn native_to_lua(self, L: *mut lua_State) -> i32 {
+        unsafe { lua::lua_pushnil(L) };
+        1
+    }
+}
+
 impl LuaPush for bool {
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
         unsafe { lua::lua_pushboolean(L, self.clone() as libc::c_int) };
@@ -24,7 +31,7 @@ impl LuaRead for bool {
         if !lua::lua_isboolean(L, index) {
             return None;
         }
-        Some(unsafe { lua::lua_toboolean(L, index) != 0 })
+        Some(lua::lua_toboolean(L, index))
     }
 }
 
