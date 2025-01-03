@@ -1,15 +1,15 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-use std::path::Path;
-use std::path::PathBuf;
-use std::fs::Metadata;
-use std::os::windows::fs::MetadataExt;
 use std::{io, env, fs};
 
-use libc::c_int as int;
+use std::fs::Metadata;
+use std::os::windows::fs::MetadataExt;
+use std::path::{ self, Path, PathBuf, Component };
+use std::path::MAIN_SEPARATOR;
 
 use luakit::*;
+use libc::c_int as int;
 use lua::{ cstr, lua_State };
 
 struct FileEntry {
@@ -76,6 +76,20 @@ fn visit_dirs(dir: &Path, recursive: bool, files: &mut Vec<FileEntry>) {
     }
 }
 
+fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
+    fs::create_dir_all(&dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            copy_dir_all(path, dst.as_ref().join(entry.file_name()))?;
+        } else {
+            fs::copy(path, dst.as_ref().join(entry.file_name()))?;
+        }
+    }
+    Ok(())
+}
+
 pub fn lstdfs_dir(L: *mut lua_State) -> int {
     let path = lua::lua_tolstring(L, 1).unwrap();
     let recursive = lua::lua_toboolean(L, 2);
@@ -108,10 +122,20 @@ pub fn lstdfs_remove(L: *mut lua_State) -> int {
     }
 }
 
-pub fn lstdfs_copy(L: *mut lua_State) -> int {
+pub fn lstdfs_copy_file(L: *mut lua_State) -> int {
     let from = lua::lua_tolstring(L, 1).unwrap();
     let to = lua::lua_tolstring(L, 2).unwrap();
     let res = fs::copy(from, to);
+    match res {
+        Ok(_) => Luakit::variadic_return1(L, true),
+        Err(e) => Luakit::variadic_return2(L, false, e.to_string())
+    }
+}
+
+pub fn lstdfs_copy(L: *mut lua_State) -> int {
+    let from = lua::lua_tolstring(L, 1).unwrap();
+    let to = lua::lua_tolstring(L, 2).unwrap();
+    let res = copy_dir_all(from, to);
     match res {
         Ok(_) => Luakit::variadic_return1(L, true),
         Err(e) => Luakit::variadic_return2(L, false, e.to_string())
@@ -234,11 +258,111 @@ pub fn lstdfs_temp_dir(L: *mut lua_State) -> int {
     return Luakit::variadic_return1(L, path.to_str().unwrap());
 }
 
+pub fn lstdfs_absolute(L: *mut lua_State) -> int {
+    let path = lua::lua_tolstring(L, 1).unwrap();
+    let res = path::absolute(path.clone());
+    match res {
+        Ok(abs) => Luakit::variadic_return1(L, abs.to_str().unwrap()),
+        Err(_) => Luakit::variadic_return1(L, path)
+    }
+}
+
 pub fn lstdfs_relative(L: *mut lua_State) -> int {
-    let target = lua::lua_tolstring(L, 1).unwrap();
+    let path = lua::lua_tolstring(L, 1).unwrap();
     let base = lua::lua_tolstring(L, 2).unwrap();
-    match get_relative_path(base, target) {
+    match get_relative_path(base, path) {
         Some(p) => Luakit::variadic_return1(L, p.to_str().unwrap()),
         None => Luakit::variadic_return1(L, "")
+    }
+}
+
+pub fn lstdfs_make_preferred(L: *mut lua_State) -> int {
+    let path = lua::lua_tolstring(L, 1).unwrap();
+    let fpath = Path::new(path.as_str());
+    #[cfg(windows)]
+    {
+        Luakit::variadic_return1(L, fpath.to_string_lossy().replace("/", "\\"))
+    }
+    #[cfg(not(windows))]
+    {
+        Luakit::variadic_return1(L, fpath.to_string_lossy().replace("/", "\\"))
+    }
+}
+
+pub fn lstdfs_root_name(L: *mut lua_State) -> int {
+    let path = lua::lua_tolstring(L, 1).unwrap();
+    let fpath = Path::new(path.as_str());
+    if fpath.has_root() {
+        let mut result = PathBuf::new();
+        for component in fpath.components() {
+            match component {
+                Component::Prefix(prefix) => result.push(prefix.as_os_str()),
+                _ => break,
+            }
+        }
+        Luakit::variadic_return1(L, result.to_str().unwrap())
+    } else {
+        Luakit::variadic_return1(L, "".to_string())
+    }
+}
+
+pub fn lstdfs_root_path(L: *mut lua_State) -> int {
+    let path = lua::lua_tolstring(L, 1).unwrap();
+    let fpath = Path::new(path.as_str());
+    if fpath.has_root() {
+        let mut result = PathBuf::new();
+        for component in fpath.components() {
+            match component {
+                Component::RootDir => result.push(component.as_os_str()),
+                Component::Prefix(prefix) => result.push(prefix.as_os_str()),
+                _ => break,
+            }
+        }
+        Luakit::variadic_return1(L, result.to_str().unwrap())
+    } else {
+        Luakit::variadic_return1(L, "".to_string())
+    }
+}
+
+pub fn lstdfs_relative_path(L: *mut lua_State) -> int {
+    let path = lua::lua_tolstring(L, 1).unwrap();
+    let fpath = Path::new(path.as_str());
+    if fpath.has_root() {
+        let mut result = PathBuf::new();
+        for component in fpath.components() {
+            match component {
+                Component::RootDir | Component::Prefix(_) => continue,
+                _ => result.push(component.as_os_str()),
+            }
+        }
+        Luakit::variadic_return1(L, result.to_str().unwrap())
+    } else {
+        Luakit::variadic_return1(L, fpath.to_path_buf().to_str().unwrap())
+    }
+}
+
+pub fn lstdfs_replace_extension(L: *mut lua_State) -> int {
+    let path = lua::lua_tolstring(L, 1).unwrap();
+    let ext = lua::lua_tolstring(L, 2).unwrap();
+    let fpath = Path::new(path.as_str());
+    Luakit::variadic_return1(L, fpath.with_extension(ext).to_str().unwrap())
+}
+
+pub fn lstdfs_replace_filename(L: *mut lua_State) -> int {
+    let path = lua::lua_tolstring(L, 1).unwrap();
+    let fname = lua::lua_tolstring(L, 2).unwrap();
+    let fpath = Path::new(path.as_str());
+    Luakit::variadic_return1(L, fpath.with_file_name(fname).to_str().unwrap())
+}
+
+pub fn lstdfs_remove_filename(L: *mut lua_State) -> int {
+    let path = lua::lua_tolstring(L, 1).unwrap();
+    let fpath = Path::new(path.as_str());
+    if fpath.as_os_str().to_str().map_or(false, |s| s.ends_with(MAIN_SEPARATOR)) {
+        return Luakit::variadic_return1(L, fpath.to_path_buf().to_str().unwrap());
+    }
+    match fpath.parent() {
+        Some(parent) => Luakit::variadic_return1(L, parent.to_path_buf().to_str().unwrap()),
+        None => Luakit::variadic_return1(L, "".to_string()),
     }
 }

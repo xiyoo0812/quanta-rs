@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 use lua::lua_State;
-use std::{collections::HashMap, ffi::CString};
+use std::collections::HashMap;
 
 pub trait LuaPush {
     fn native_to_lua(self, L: *mut lua_State) -> i32;
@@ -37,14 +37,8 @@ impl LuaRead for bool {
 
 impl LuaPush for String {
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
-        if let Some(value) = CString::new(&self[..]).ok() {
-            unsafe { lua::lua_pushstring(L, value.as_ptr()) };
-            1
-        } else {
-            let value = CString::new(&"UNVAILED STRING"[..]).unwrap();
-            unsafe { lua::lua_pushstring(L, value.as_ptr()) };
-            1
-        }
+        unsafe { lua::lua_pushlstring(L, self.as_ptr() as *const i8, self.len() as usize); };
+        1
     }
 }
 
@@ -56,14 +50,8 @@ impl LuaRead for String {
 
 impl<'s> LuaPush for &'s str {
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
-        if let Some(value) = CString::new(&self[..]).ok() {
-            unsafe { lua::lua_pushstring(L, value.as_ptr()) };
-            1
-        } else {
-            let value = CString::new(&"UNVAILED STRING"[..]).unwrap();
-            unsafe { lua::lua_pushstring(L, value.as_ptr()) };
-            1
-        }
+        unsafe { lua::lua_pushlstring(L, self.as_ptr() as *const i8, self.len() as usize); };
+        1
     }
 }
 
