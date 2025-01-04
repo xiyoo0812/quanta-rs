@@ -1,12 +1,13 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-use lua::lua_State;
 use libc::c_char as char;
+use lua::{ cstr, lua_State, lua_CFunction };
 
 use crate::lua_stack::*;
 use crate::lua_function::*;
 use crate::lua_base::LuaGuard;
+use crate::lua_table::LuaTable;
 use crate::lua_reference::Reference;
 use crate::{ lua_call_function_impl, table_call_function_impl };
 
@@ -45,6 +46,37 @@ impl Luakit {
         let _ = LuaGuard::new(self.m_L);
         unsafe { lua::lua_getglobal(self.m_L, key); }
         return LuaRead::lua_to_native(self.m_L, -1);
+    }
+
+    pub fn get_path(&mut self, field: *const char) -> String {
+        let _ = LuaGuard::new(self.m_L);
+        unsafe {
+            lua::lua_getglobal(self.m_L, lua::LUA_LOADLIBNAME);
+            lua::lua_getfield(self.m_L, -1, field);
+            lua::lua_tostring(self.m_L, -1).unwrap()
+        }
+    }
+
+    pub fn set_searchers(&mut self, f : lua_CFunction) {
+        let _ = LuaGuard::new(self.m_L);
+        unsafe {
+            lua::lua_getglobal(self.m_L, lua::LUA_LOADLIBNAME);
+            lua::lua_getfield(self.m_L, -1, cstr!("searchers"));
+            lua::lua_pushcfunction(self.m_L, f);
+            lua::lua_rawseti(self.m_L, -2, 2);
+        }
+    }
+
+    pub fn new_table(&mut self, name: Option<*const char>) -> LuaTable {
+        let _ = LuaGuard::new(self.m_L);
+        unsafe { 
+            lua::lua_createtable(self.m_L, 0, 8);
+            if !name.is_none() {
+                lua::lua_pushvalue(self.m_L, -1);
+                lua::lua_setglobal(self.m_L, name.unwrap());
+            }
+            LuaTable::new(self.m_L)
+        }
     }
     
     pub fn run_file(&mut self, file: *const char) ->Result<bool, String> {

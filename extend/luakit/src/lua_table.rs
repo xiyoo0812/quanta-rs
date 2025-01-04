@@ -17,10 +17,14 @@ pub struct LuaTable {
 }
 
 impl LuaTable {
-    pub fn new(L: *mut lua_State, index: int) -> LuaTable {
+    pub fn new(L: *mut lua_State) -> LuaTable {
+        unsafe { LuaTable {  m_L: L, m_index: lua::luaL_ref(L, lua::LUA_REGISTRYINDEX) } }
+    }
+    
+    pub fn newref(L: *mut lua_State, index: int) -> LuaTable {
         unsafe {
             lua::lua_pushvalue(L, index);
-            LuaTable {  m_L: L, m_index: lua::luaL_ref(L, lua::LUA_REGISTRYINDEX), }
+            LuaTable {  m_L: L, m_index: lua::luaL_ref(L, lua::LUA_REGISTRYINDEX) }
         }
     }
 
@@ -89,6 +93,6 @@ impl LuaPush for LuaTable {
 
 impl LuaRead for LuaTable {
     fn lua_to_native(L: *mut lua_State, index: i32) -> Option<LuaTable> {
-        Some(LuaTable::new(L, index))
+        Some(LuaTable::newref(L, index))
     }
 }

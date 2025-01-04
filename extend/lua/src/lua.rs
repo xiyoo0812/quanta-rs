@@ -14,6 +14,8 @@ use libc::size_t as size_t;
 use std::ffi::CStr;
 use std::{ default, ptr };
 
+use crate::cstr;
+
 pub const MULTRET: int              = -1;
 
 pub const LUA_OK: int               = 0;
@@ -86,6 +88,8 @@ pub const LUA_REFNIL: int           = -1;
 pub type lua_Number                 = libc::c_double;
 pub type lua_Integer                = libc::ptrdiff_t;
 pub type lua_Unsigned               = libc::c_ulong;
+
+pub const LUA_LOADLIBNAME: *const char  = cstr!("package");
 
 #[repr(C)]
 pub struct lua_State;

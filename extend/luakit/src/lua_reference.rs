@@ -13,7 +13,11 @@ pub struct Reference {
 }
 
 impl Reference {
-    pub fn new(L: *mut lua_State, index: int) -> Reference {
+    pub fn new(L: *mut lua_State) -> Reference {
+        unsafe { Reference {  m_L: L, m_index: lua::luaL_ref(L, lua::LUA_REGISTRYINDEX) } }
+    }
+
+    pub fn newref(L: *mut lua_State, index: int) -> Reference {
         unsafe {
             lua::lua_pushvalue(L, index);
             Reference {  m_L: L, m_index: lua::luaL_ref(L, lua::LUA_REGISTRYINDEX), }
@@ -44,6 +48,6 @@ impl LuaPush for Reference {
 
 impl LuaRead for Reference {
     fn lua_to_native(L: *mut lua_State, index: i32) -> Option<Reference> {
-        Some(Reference::new(L, index))
+        Some(Reference::newref(L, index))
     }
 }
