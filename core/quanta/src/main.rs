@@ -36,4 +36,8 @@ fn main() {
         }
         Err(e) => println!("Error: {}", e),
     }
+
+    loop {
+        L.call_function(cstr!("run"));
+    }
 }

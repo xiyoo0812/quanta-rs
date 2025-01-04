@@ -14,6 +14,7 @@ use lua::{ cstr, lua_reg, lua_State };
 #[no_mangle]
 pub extern "C" fn luaopen_ltimer(L: *mut lua_State) -> int {
     let LFUNS = [
+        lua_reg!("sleep", timer_sleep),
         lua_reg!("insert", timer_insert),
         lua_reg!("update", timer_update),
         lua_reg!("now", |L| { Luakit::variadic_return1(L, luakit::now()) }),
@@ -21,7 +22,7 @@ pub extern "C" fn luaopen_ltimer(L: *mut lua_State) -> int {
         lua_reg!("now_ns", |L| { Luakit::variadic_return1(L, luakit::now_ns()) }),
         lua_reg!("steady", |L| { Luakit::variadic_return1(L, luakit::steady()) }),
         lua_reg!("steady_ms", |L| { Luakit::variadic_return1(L, luakit::steady_ms()) }),
-        lua_reg!("time", |L| { Luakit::variadic_return2(L, luakit::now(), luakit::now_ms()) }),
+        lua_reg!("time", |L| { Luakit::variadic_return2(L, luakit::now_ms(), luakit::steady_ms()) }),
         lua_reg!(),
     ];
     unsafe {

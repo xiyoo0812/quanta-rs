@@ -22,10 +22,9 @@ for k, v in pairs(d) do
 	print("json decode:", k, v)
 end
 
-function test()
+function test_stdfs()
 	local stdfs = require "lstdfs"
 	local dirs = stdfs.dir("./")
-	print("test func call")
 	for i, info in ipairs(dirs) do
 		print(string.format("dir %d: {name = %s, type = %s} ", i, info.name, info.type))
 	end
@@ -100,7 +99,30 @@ function test()
 	print ("relative_path:", relative_path)
 end
 
+function test()
+	print("test func call")
+end
+
 function test1(a, b)
 	print("test1 func call, args: ", a, b)
 	return a, a + b, "ABC"
+end
+
+local timer = require("ltimer")
+
+local TIMER_ACCURYACY = 20
+
+timer.insert(1000, 1000 / TIMER_ACCURYACY)
+
+local last = timer.steady_ms()
+function run()
+	timer.sleep(20)
+	local now_ms = timer.steady_ms()
+	local esapped = now_ms - last
+	local timerids =  timer.update(esapped // TIMER_ACCURYACY)
+	for _, timerid in pairs(timerids) do
+		print("timerid: ", timerid)
+		timer.insert(timerid, 1000 / TIMER_ACCURYACY)
+	end
+	last = timer.steady_ms()
 end
