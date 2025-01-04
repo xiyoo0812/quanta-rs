@@ -21,12 +21,12 @@ fn main() {
         Err(e) => println!("Error: {}", e),
     }
 
-    let res = L.call_function(cstr!("test"));
+    let res = L.call_global(cstr!("test"));
     match res {
-        Ok(_) => println!("call_function executed successfully"),
+        Ok(_) => println!("call_global executed successfully"),
         Err(e) => println!("Error: {}", e),
     }
-    let ret = L.call_lua2(cstr!("test1"), 3, 1, 2);
+    let ret = L.call2(cstr!("test1"), 3, 1, 2);
     match ret {
         Ok(mut refs) => {
             let r1 = refs[0].get::<i32>().unwrap();
@@ -38,6 +38,6 @@ fn main() {
     }
 
     loop {
-        L.call_function(cstr!("run"));
+        L.call_global(cstr!("run"));
     }
 }

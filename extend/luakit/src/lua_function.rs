@@ -6,11 +6,25 @@ use libc::c_int as int;
 use libc::c_char as char;
 use lua::{ cstr, lua_State };
 
+use crate::lua_stack::LuaPush;
+
 //get global function
 //-------------------------------------------------------------------------------
 pub fn get_global_function(L: *mut lua_State, func: *const char) -> bool {
     unsafe {
         lua::lua_getglobal(L, func);
+        return lua::lua_isfunction(L, -1);
+    }
+}
+
+pub fn get_table_function(L: *mut lua_State, table: *const char, func: *const char) -> bool {
+    unsafe {
+        lua::lua_getglobal(L, table);
+        if !lua::lua_istable(L, -1) {
+            return false;
+        }
+        lua::lua_getfield(L, -1, func);
+        lua::lua_remove(L, -2);
         return lua::lua_isfunction(L, -1);
     }
 }
@@ -51,7 +65,33 @@ macro_rules! lua_call_function_impl {
     ($name:ident, $($p:ident),*) => {
         #[allow(unused_mut)]
         pub fn $name<$($p),*>(&mut self, func: *const char, retc: i32, $($p : $p, )*) -> Result<Vec<Reference>, String> where $($p : LuaPush),* {
-            if !get_global_function(self.m_L, func) {
+            if !self.get_function(func) {
+                return Err("function not found".to_string());
+            }
+            let mut argc = 0;
+            $(argc += $p.native_to_lua(self.m_L); )*
+            let res = lua_call_function(self.m_L, argc, retc);
+            match res {
+                Err(e) => return Err(e),
+                Ok(_) => {
+                    let mut ret = Vec::new();
+                    for i in 0..retc {
+                        ret.push(LuaRead::lua_to_native(self.m_L, -(retc - i)).unwrap());
+                    }
+                    lua::lua_pop(self.m_L, retc);
+                    return Ok(ret);
+                }
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! table_call_function_impl {
+    ($name:ident, $($p:ident),*) => {
+        #[allow(unused_mut)]
+        pub fn $name<$($p),*>(&mut self, table: *const char, func: *const char, retc: i32, $($p : $p, )*) -> Result<Vec<Reference>, String> where $($p : LuaPush),* {
+            if !get_table_function(self.m_L, table, func) {
                 return Err("function not found".to_string());
             }
             let mut argc = 0;
@@ -83,3 +123,14 @@ macro_rules! variadic_return_impl {
         }
     }
 }
+
+variadic_return_impl!(variadic_return1, A);
+variadic_return_impl!(variadic_return2, A, B);
+variadic_return_impl!(variadic_return3, A, B, C);
+variadic_return_impl!(variadic_return4, A, B, C, D);
+variadic_return_impl!(variadic_return5, A, B, C, D, E);
+variadic_return_impl!(variadic_return6, A, B, C, D, E, F);
+variadic_return_impl!(variadic_return7, A, B, C, D, E, F, G);
+variadic_return_impl!(variadic_return8, A, B, C, D, E, F, G, H);
+variadic_return_impl!(variadic_return9, A, B, C, D, E, F, G, H, I);
+variadic_return_impl!(variadic_return10, A, B, C, D, E, F, G, H, I, J);

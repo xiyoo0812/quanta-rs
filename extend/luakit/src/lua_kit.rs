@@ -8,7 +8,7 @@ use crate::lua_stack::*;
 use crate::lua_function::*;
 use crate::lua_base::LuaGuard;
 use crate::lua_reference::Reference;
-use crate::{ lua_call_function_impl, variadic_return_impl };
+use crate::{ lua_call_function_impl, table_call_function_impl };
 
 pub struct Luakit {
     m_L: *mut lua_State,
@@ -30,6 +30,10 @@ impl Luakit {
 
     pub fn L(&mut self) -> *mut lua_State {
         return self.m_L;
+    }
+
+    pub fn push<V>(&mut self, value: V) ->i32 where V: LuaPush {
+        return value.native_to_lua(self.m_L);
     }
 
     pub fn set<V>(&mut self, key: *const char, value: V) where V: LuaPush {
@@ -69,37 +73,40 @@ impl Luakit {
         return get_global_function(self.m_L, function);
     }
 
-    pub fn call(&mut self) ->Result<bool, String> {
+    pub fn call_function(&mut self) ->Result<bool, String> {
         return lua_call_function(self.m_L, 0, 0);
     }
 
-    pub fn call_function(&mut self, func: *const char) ->Result<bool, String> {
+    pub fn call_global(&mut self, func: *const char) ->Result<bool, String> {
         return call_global_function(self.m_L, func, 0, 0);
     }
     
-    lua_call_function_impl!(call_lua, );
-    lua_call_function_impl!(call_lua1, A);
-    lua_call_function_impl!(call_lua2, A, B);
-    lua_call_function_impl!(call_lua3, A, B, C);
-    lua_call_function_impl!(call_lua4, A, B, C, D);
-    lua_call_function_impl!(call_lua5, A, B, C, D, E);
-    lua_call_function_impl!(call_lua6, A, B, C, D, E, F);
-    lua_call_function_impl!(call_lua7, A, B, C, D, E, F, G);
-    lua_call_function_impl!(call_lua8, A, B, C, D, E, F, G, H);
-    lua_call_function_impl!(call_lua9, A, B, C, D, E, F, G, H, I);
-    lua_call_function_impl!(call_lua10, A, B, C, D, E, F, G, H, I, J);
+    lua_call_function_impl!(call, );
+    lua_call_function_impl!(call1, A);
+    lua_call_function_impl!(call2, A, B);
+    lua_call_function_impl!(call3, A, B, C);
+    lua_call_function_impl!(call4, A, B, C, D);
+    lua_call_function_impl!(call5, A, B, C, D, E);
+    lua_call_function_impl!(call6, A, B, C, D, E, F);
+    lua_call_function_impl!(call7, A, B, C, D, E, F, G);
+    lua_call_function_impl!(call8, A, B, C, D, E, F, G, H);
+    lua_call_function_impl!(call9, A, B, C, D, E, F, G, H, I);
+    lua_call_function_impl!(call10, A, B, C, D, E, F, G, H, I, J);
 
-    variadic_return_impl!(variadic_return1, A);
-    variadic_return_impl!(variadic_return2, A, B);
-    variadic_return_impl!(variadic_return3, A, B, C);
-    variadic_return_impl!(variadic_return4, A, B, C, D);
-    variadic_return_impl!(variadic_return5, A, B, C, D, E);
-    variadic_return_impl!(variadic_return6, A, B, C, D, E, F);
-    variadic_return_impl!(variadic_return7, A, B, C, D, E, F, G);
-    variadic_return_impl!(variadic_return8, A, B, C, D, E, F, G, H);
-    variadic_return_impl!(variadic_return9, A, B, C, D, E, F, G, H, I);
-    variadic_return_impl!(variadic_return10, A, B, C, D, E, F, G, H, I, J);
+    table_call_function_impl!(table_call, );
+    table_call_function_impl!(table_call1, A);
+    table_call_function_impl!(table_call2, A, B);
+    table_call_function_impl!(table_call3, A, B, C);
+    table_call_function_impl!(table_call4, A, B, C, D);
+    table_call_function_impl!(table_call5, A, B, C, D, E);
+    table_call_function_impl!(table_call6, A, B, C, D, E, F);
+    table_call_function_impl!(table_call7, A, B, C, D, E, F, G);
+    table_call_function_impl!(table_call8, A, B, C, D, E, F, G, H);
+    table_call_function_impl!(table_call9, A, B, C, D, E, F, G, H, I);
+    table_call_function_impl!(table_call10, A, B, C, D, E, F, G, H, I, J);
+
 }
+
 
 impl Drop for Luakit {
     fn drop(&mut self) {

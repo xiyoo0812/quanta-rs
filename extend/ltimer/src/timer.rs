@@ -2,7 +2,6 @@
 #![allow(dead_code)]
 
 use lua::lua_State;
-use luakit::Luakit;
 use libc::c_int as int;
 
 use std::cell::RefCell;
@@ -138,7 +137,7 @@ pub fn timer_update(L: *mut lua_State) -> int {
     return LUA_TIMER.with(|lua_timer| {
         let mut lua_timer = lua_timer.borrow_mut();
         let timers = lua_timer.update(escape);
-        return Luakit::variadic_return1(L, timers);
+        return luakit::variadic_return1(L, timers);
     });
 }
 
