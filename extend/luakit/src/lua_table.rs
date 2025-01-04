@@ -1,9 +1,9 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-use lua::lua_State;
 use libc::c_int as int;
 use libc::c_char as char;
+use lua::{ lua_State , lua_CFunction };
 
 use crate::lua_function::*;
 use crate::lua_base::LuaGuard;
@@ -49,6 +49,15 @@ impl LuaTable {
             lua::lua_getfield(self.m_L, -1, function);
             lua::lua_remove(self.m_L, -2);
             return lua::lua_isfunction(self.m_L, -1);
+        }
+    }
+
+    pub fn set_function(&mut self, name: *const char, f : lua_CFunction) {
+        let _ = LuaGuard::new(self.m_L);
+        unsafe { 
+            lua::lua_rawgeti(self.m_L, lua::LUA_REGISTRYINDEX, self.m_index); 
+            lua::lua_pushcfunction(self.m_L, f);
+            lua::lua_setfield(self.m_L, -2, name);
         }
     }
 

@@ -15,7 +15,15 @@ fn main() {
     unsafe { setlocale(LC_ALL, cstr!("en_US.UTF-8")) };
 
     let mut L = Luakit::new();
-    let res = L.run_file(cstr!("aa.lua"));
+    L.set_function(cstr!("set_path"), |lua| {
+        let mut xx = Luakit::load(lua);
+        let field = lua::lua_tolstring(lua, 1).unwrap();
+        let path = lua::lua_tolstring(lua, 2).unwrap();
+        xx.set_path(field.as_str(), path.as_str());
+        return 0;
+    });
+
+    let res = L.run_file(cstr!("entry.lua"));
     match res {
         Ok(_) => println!("run_script executed successfully"),
         Err(e) => println!("Error: {}", e),
@@ -40,4 +48,6 @@ fn main() {
     loop {
         L.call_global(cstr!("run"));
     }
+
+    L.close();
 }

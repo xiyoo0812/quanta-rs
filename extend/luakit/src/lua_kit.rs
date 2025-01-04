@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
+use std::env;
 use libc::c_char as char;
 use lua::{ cstr, lua_State, lua_CFunction };
 
@@ -29,6 +30,10 @@ impl Luakit {
         Luakit { m_L: L }
     }
 
+    pub fn close(&mut self) {
+        unsafe { lua::lua_close(self.m_L); }
+    }
+
     pub fn L(&mut self) -> *mut lua_State {
         return self.m_L;
     }
@@ -51,19 +56,35 @@ impl Luakit {
     pub fn get_path(&mut self, field: *const char) -> String {
         let _ = LuaGuard::new(self.m_L);
         unsafe {
-            lua::lua_getglobal(self.m_L, lua::LUA_LOADLIBNAME);
+            lua::lua_getglobal(self.m_L, cstr!("package"));
             lua::lua_getfield(self.m_L, -1, field);
             lua::lua_tostring(self.m_L, -1).unwrap()
+        }
+    }
+
+    pub fn set_path(&mut self, field: &str, path: &str) {
+        if field == "LUA_PATH" {
+            self.set_lua_path("path", path);
+        } else {
+            self.set_lua_path("cpath", path);
         }
     }
 
     pub fn set_searchers(&mut self, f : lua_CFunction) {
         let _ = LuaGuard::new(self.m_L);
         unsafe {
-            lua::lua_getglobal(self.m_L, lua::LUA_LOADLIBNAME);
+            lua::lua_getglobal(self.m_L, cstr!("package"));
             lua::lua_getfield(self.m_L, -1, cstr!("searchers"));
             lua::lua_pushcfunction(self.m_L, f);
             lua::lua_rawseti(self.m_L, -2, 2);
+        }
+    }
+
+    pub fn set_function(&mut self, name: *const char, f : lua_CFunction) {
+        let _ = LuaGuard::new(self.m_L);
+        unsafe {
+            lua::lua_pushcfunction(self.m_L, f);
+            lua::lua_setglobal(self.m_L, name);
         }
     }
 
@@ -137,12 +158,30 @@ impl Luakit {
     table_call_function_impl!(table_call9, A, B, C, D, E, F, G, H, I);
     table_call_function_impl!(table_call10, A, B, C, D, E, F, G, H, I, J);
 
-}
-
-
-impl Drop for Luakit {
-    fn drop(&mut self) {
-        unsafe { lua::lua_close(self.m_L); }
+    fn set_lua_path(&mut self, fieldname: &str, path: &str) {
+        let mut buffer = String::new();
+        let mut package = self.get::<LuaTable>(cstr!("package")).unwrap();
+        let dftmark = path.find(";;").unwrap_or(0);
+        if dftmark > 0 {
+            // 添加前缀部分
+            buffer.push_str(&path[..dftmark]);
+            buffer.push_str(";");
+            // 添加默认路径
+            let dft = package.get::<&str, String>(fieldname).unwrap_or_default();
+            buffer.push_str(&dft);
+            // 添加后缀部分
+            if dftmark + 2 < path.len() {
+                buffer.push_str(";");
+                buffer.push_str(&path[dftmark + 2..]);
+            }
+        } else {
+            buffer = path.to_string();
+        }
+        #[cfg(windows)]
+        {
+            let cur_path = env::current_dir().unwrap();
+            buffer = buffer.replace("!", cur_path.to_str().unwrap());
+        }
+        package.set(fieldname, buffer);
     }
 }
-

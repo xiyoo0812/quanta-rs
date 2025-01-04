@@ -1,26 +1,7 @@
 
 
-print("hello world")
+print("hello stdfs")
 
-local x = 1
-local y = 2
-
-print(x, y, x+y)
-
-local a = {a = 1, b =2} 
-for k, v in pairs(a) do
-	print(k, v)
-end
-
-local json = require "ljson"
-local e = json.encode(a)
-
-print("json encode:", e)
-
-local d = json.decode(e)
-for k, v in pairs(d) do
-	print("json decode:", k, v)
-end
 
 function test_stdfs()
 	local stdfs = require "lstdfs"
@@ -50,13 +31,13 @@ function test_stdfs()
 	print ("file stem:", fstem)
 	local filename = stdfs.filename("./bb/xx.lua")
 	print ("file name:", filename)
-	local ftype = stdfs.filetype("./aa.lua")
+	local ftype = stdfs.filetype("./entry.lua")
 	print ("file type:", ftype)
-	local fsize = stdfs.file_size("./aa.lua")
+	local fsize = stdfs.file_size("./entry.lua")
 	print ("file size:", fsize)
-	local ext = stdfs.extension("./aa.lua")
+	local ext = stdfs.extension("./entry.lua")
 	print ("file extension:", ext)
-	local write_time = stdfs.last_write_time("./aa.lua")
+	local write_time = stdfs.last_write_time("./entry.lua")
 	print ("file last_write_time:", write_time)
 	local isdir = stdfs.is_directory("./bb")
 	print ("is dir:", isdir)
@@ -97,32 +78,4 @@ function test_stdfs()
 	print ("root_path:", rpath)
 	local relative_path = stdfs.relative_path(".\\Users\\example\\path\\to\\file.txt")
 	print ("relative_path:", relative_path)
-end
-
-function test()
-	print("test func call")
-end
-
-function test1(a, b)
-	print("test1 func call, args: ", a, b)
-	return a, a + b, "ABC"
-end
-
-local timer = require("ltimer")
-
-local TIMER_ACCURYACY = 20
-
-timer.insert(1000, 1000 / TIMER_ACCURYACY)
-
-local last = timer.steady_ms()
-function run()
-	timer.sleep(20)
-	local now_ms = timer.steady_ms()
-	local esapped = now_ms - last
-	local timerids =  timer.update(esapped // TIMER_ACCURYACY)
-	for _, timerid in pairs(timerids) do
-		print("timerid: ", timerid)
-		timer.insert(timerid, 1000 / TIMER_ACCURYACY)
-	end
-	last = timer.steady_ms()
 end
