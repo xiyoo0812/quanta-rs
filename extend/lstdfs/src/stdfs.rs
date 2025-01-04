@@ -8,9 +8,9 @@ use std::os::windows::fs::MetadataExt;
 use std::path::{ self, Path, PathBuf, Component };
 use std::path::MAIN_SEPARATOR;
 
-use luakit::*;
 use libc::c_int as int;
 use lua::{ cstr, lua_State };
+use luakit::{ Luakit, LuaPush };
 
 struct FileEntry {
     ename: String,

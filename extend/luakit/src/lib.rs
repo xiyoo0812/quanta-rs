@@ -4,6 +4,7 @@ extern crate libc;
 
 pub mod lua_kit;
 pub mod lua_base;
+pub mod lua_time;
 pub mod lua_stack;
 pub mod lua_reference;
 
@@ -12,5 +13,6 @@ pub mod lua_function;
 
 pub use lua_kit::*;
 pub use lua_base::*;
+pub use lua_time::*;
 pub use lua_stack::*;
 pub use lua_function::*;

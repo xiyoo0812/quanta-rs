@@ -3,8 +3,9 @@ resolver = "2"
 members = [
     "extend/lua",
     "extend/luakit",
-    "extend/lstdfs",
     "extend/ljson",
+    "extend/lstdfs",
+    "extend/ltimer",
     "core/quanta",
 ]
 

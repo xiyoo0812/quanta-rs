@@ -12,14 +12,14 @@ use lua::{ cstr, lua_reg, lua_State };
 
 #[no_mangle]
 pub extern "C" fn luaopen_ljson(L: *mut lua_State) -> int {
-    let l = [
-        lua_reg!("encode", |l| { return encode_impl(l);}),
-        lua_reg!("decode", |l| { return decode_impl(l);}),
+    let LFUNS = [
+        lua_reg!("encode", encode_impl),
+        lua_reg!("decode", decode_impl),
         lua_reg!(),
     ];
     unsafe {
-        lua::lua_createtable(L, 2, 0);
-        lua::luaL_setfuncs(L, l.as_ptr(), 0);
+        lua::lua_createtable(L, LFUNS.len() as i32, 0);
+        lua::luaL_setfuncs(L, LFUNS.as_ptr(), 0);
         return 1;
     }
 }

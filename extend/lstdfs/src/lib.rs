@@ -12,43 +12,43 @@ use lua::{ cstr, lua_reg, lua_State };
 
 #[no_mangle]
 pub extern "C" fn luaopen_lstdfs(L: *mut lua_State) -> int {
-    let lfuns = [
-        lua_reg!("dir", |L| { return lstdfs_dir(L);}),
-        lua_reg!("stem", |L| { return lstdfs_stem(L);}),
-        lua_reg!("copy", |L| { return lstdfs_copy(L);}),
-        lua_reg!("mkdir", |L| { return lstdfs_mkdir(L);}),
-        lua_reg!("chdir", |L| { return lstdfs_chdir(L);}),
-        lua_reg!("split", |L| { return lstdfs_split(L);}),
-        lua_reg!("concat", |L| { return lstdfs_concat(L);}),
-        lua_reg!("rename", |L| { return lstdfs_rename(L);}),
-        lua_reg!("remove", |L| { return lstdfs_remove(L);}),
-        lua_reg!("exists", |L| { return lstdfs_exists(L);}),
-        lua_reg!("append", |L| { return lstdfs_append(L);}),
-        lua_reg!("absolute", |L| { return lstdfs_absolute(L);}),
-        lua_reg!("relative", |L| { return lstdfs_relative(L);}),
-        lua_reg!("temp_dir", |L| { return lstdfs_temp_dir(L);}),
-        lua_reg!("filename", |L| { return lstdfs_filename(L);}),
-        lua_reg!("filetype", |L| { return lstdfs_filetype(L);}),
-        lua_reg!("extension", |L| { return lstdfs_extension(L);}),
-        lua_reg!("file_size", |L| { return lstdfs_file_size(L);}),
-        lua_reg!("copy_file", |L| { return lstdfs_copy_file(L);}),
-        lua_reg!("root_name", |L| { return lstdfs_root_name(L);}),
-        lua_reg!("root_path", |L| { return lstdfs_root_path(L);}),
-        lua_reg!("is_absolute", |L| { return lstdfs_is_absolute(L);}),
-        lua_reg!("parent_path", |L| { return lstdfs_parent_path(L);}),
-        lua_reg!("current_path", |L| { return lstdfs_current_path(L);}),
-        lua_reg!("is_directory", |L| { return lstdfs_is_directory(L);}),
-        lua_reg!("relative_path", |L| { return lstdfs_relative_path(L);}),
-        lua_reg!("make_preferred", |L| { return lstdfs_make_preferred(L);}),
-        lua_reg!("last_write_time", |L| { return lstdfs_last_write_time(L);}),
-        lua_reg!("remove_filename", |L| { return lstdfs_remove_filename(L);}),
-        lua_reg!("replace_filename", |L| { return lstdfs_replace_filename(L);}),
-        lua_reg!("replace_extension", |L| { return lstdfs_replace_extension(L);}),
+    let LFUNS = [
+        lua_reg!("dir", lstdfs_dir),
+        lua_reg!("stem", lstdfs_stem),
+        lua_reg!("copy", lstdfs_copy),
+        lua_reg!("mkdir", lstdfs_mkdir),
+        lua_reg!("chdir", lstdfs_chdir),
+        lua_reg!("split", lstdfs_split),
+        lua_reg!("concat", lstdfs_concat),
+        lua_reg!("rename", lstdfs_rename),
+        lua_reg!("remove", lstdfs_remove),
+        lua_reg!("exists", lstdfs_exists),
+        lua_reg!("append", lstdfs_append),
+        lua_reg!("absolute", lstdfs_absolute),
+        lua_reg!("relative", lstdfs_relative),
+        lua_reg!("temp_dir", lstdfs_temp_dir),
+        lua_reg!("filename", lstdfs_filename),
+        lua_reg!("filetype", lstdfs_filetype),
+        lua_reg!("extension", lstdfs_extension),
+        lua_reg!("file_size", lstdfs_file_size),
+        lua_reg!("copy_file", lstdfs_copy_file),
+        lua_reg!("root_name", lstdfs_root_name),
+        lua_reg!("root_path", lstdfs_root_path),
+        lua_reg!("is_absolute", lstdfs_is_absolute),
+        lua_reg!("parent_path", lstdfs_parent_path),
+        lua_reg!("current_path", lstdfs_current_path),
+        lua_reg!("is_directory", lstdfs_is_directory),
+        lua_reg!("relative_path", lstdfs_relative_path),
+        lua_reg!("make_preferred", lstdfs_make_preferred),
+        lua_reg!("last_write_time", lstdfs_last_write_time),
+        lua_reg!("remove_filename", lstdfs_remove_filename),
+        lua_reg!("replace_filename", lstdfs_replace_filename),
+        lua_reg!("replace_extension", lstdfs_replace_extension),
         lua_reg!(),
     ];
     unsafe {
-        lua::lua_createtable(L, 2, 0);
-        lua::luaL_setfuncs(L, lfuns.as_ptr(), 0);
+        lua::lua_createtable(L, LFUNS.len() as i32, 0);
+        lua::luaL_setfuncs(L, LFUNS.as_ptr(), 0);
         return 1;
     }
 }
