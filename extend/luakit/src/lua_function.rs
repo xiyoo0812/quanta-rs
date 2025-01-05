@@ -4,9 +4,85 @@
 
 use libc::c_int as int;
 use libc::c_char as char;
-use lua::{ cstr, lua_State };
 
-use crate::lua_stack::LuaPush;
+use std::mem;
+use std::marker::PhantomData;
+
+use lua::{ cstr, lua_State };
+use crate::lua_stack::{ LuaPush, LuaRead };
+
+pub struct FuncWrapper<F, P, R> {
+    function: F,
+    marker: PhantomData<(P, R)>,
+}
+
+pub trait FuncWrapperCall<P> {
+    type Output;
+    fn call(&mut self, params: P) -> Self::Output;
+}
+
+macro_rules! impl_wrapper_fn {
+    ($name:ident, $($p:ident),*) => (
+        pub fn $name<Z, R $(, $p)*>(f: Z) -> FuncWrapper<Z, ($($p,)*), R> where Z: FnMut($($p),*) -> R {
+            FuncWrapper { function: f, marker: PhantomData, }
+        }
+    )
+}
+
+macro_rules! impl_wrapper_fn_call {
+    ($($p:ident),*) => (
+        impl<Z, R $(,$p)*> FuncWrapperCall<($($p,)*)> for FuncWrapper<Z, ($($p,)*), R> where Z: FnMut($($p),*) -> R {
+            type Output = R;
+            fn call(&mut self, params: ($($p,)*)) -> Self::Output {
+                let ($($p,)*) = params;
+                (self.function)($($p),*)
+            }
+        }
+
+        impl<Z, R $(,$p: 'static)*> LuaPush for FuncWrapper<Z, ($($p,)*), R> where Z: FnMut($($p),*) -> R, ($($p,)*): LuaRead, R: LuaPush + 'static {
+            fn native_to_lua(self, L: *mut lua_State) -> i32 {
+                unsafe {
+                    let lua_data = lua::lua_newuserdata(L, mem::size_of::<Z>() as libc::size_t);
+                    let lua_data: *mut Z = std::mem::transmute(lua_data);
+                    ptr::write(lua_data, self.function);
+                    let wrapper = lua_adapter::<Self, _, R>;
+                    td_clua::lua_pushcclosure(lua, wrapper, 1);
+                    1
+                }
+            }
+        }
+    )
+}
+
+unsafe fn lua_adapter<T, P, R>(L: *mut lua_State) -> int where T: FuncWrapperCall<P, Output = R>, P: LuaRead + 'static, R: LuaPush {
+    let data_raw = lua::lua_touserdata(L, lua::lua_upvalueindex(1));
+    let data: &mut T = mem::transmute(data_raw);
+    let arguments_count = lua::lua_gettop(L) as i32;
+    let args = match LuaRead::lua_to_native(L, -arguments_count as libc::c_int) {
+        Some(a) => a,
+        _ => {
+            let err_msg: String = format!("wrong parameter types for callback function arguments_count is {}", arguments_count);
+            err_msg.native_to_lua(L);
+            lua::lua_error(L);
+        }
+    };
+
+    let ret_value = data.call(args);
+    ret_value.native_to_lua(L)
+}
+
+
+impl_wrapper_fn!(wrapper_fn,);
+impl_wrapper_fn!(wrapper_fn1, A);
+impl_wrapper_fn!(wrapper_fn2, A, B);
+impl_wrapper_fn!(wrapper_fn3, A, B, C);
+impl_wrapper_fn!(wrapper_fn4, A, B, C, D);
+impl_wrapper_fn!(wrapper_fn5, A, B, C, D, E);
+impl_wrapper_fn!(wrapper_fn6, A, B, C, D, E, F);
+impl_wrapper_fn!(wrapper_fn7, A, B, C, D, E, F, G);
+impl_wrapper_fn!(wrapper_fn8, A, B, C, D, E, F, G, H);
+impl_wrapper_fn!(wrapper_fn9, A, B, C, D, E, F, G, H, I);
+impl_wrapper_fn!(wrapper_fn10, A, B, C, D, E, F, G, H, I, J);
 
 //get global function
 //-------------------------------------------------------------------------------
