@@ -5,49 +5,24 @@ extern crate lua;
 extern crate libc;
 extern crate luakit;
 
+mod quanta;
+
 use lua::cstr;
-use luakit::Luakit;
+use quanta::Quanta;
 use libc::{ setlocale, LC_ALL };
 
 #[allow(unused)]
 fn main() {
     //stdout 中文支持
     unsafe { setlocale(LC_ALL, cstr!("en_US.UTF-8")) };
-
-    let mut L = Luakit::new();
-    L.set_function(cstr!("set_path"), |lua| {
-        let mut xx = Luakit::load(lua);
-        let field = lua::lua_tolstring(lua, 1).unwrap();
-        let path = lua::lua_tolstring(lua, 2).unwrap();
-        xx.set_path(field.as_str(), path.as_str());
-        return 0;
-    });
-
-    let res = L.run_file(cstr!("entry.lua"));
-    match res {
-        Ok(_) => println!("run_script executed successfully"),
-        Err(e) => println!("Error: {}", e),
+    //初始化引擎
+    let mut quanta = Quanta::new();
+    if !quanta.init() {
+        println!("init failed");
+        return;
     }
-
-    let res = L.call_global(cstr!("test"));
-    match res {
-        Ok(_) => println!("call_global executed successfully"),
-        Err(e) => println!("Error: {}", e),
-    }
-    let ret = L.call2(cstr!("test1"), 3, 1, 2);
-    match ret {
-        Ok(mut refs) => {
-            let r1 = refs[0].get::<i32>().unwrap();
-            let r2 = refs[1].get::<i32>().unwrap();
-            let r3 = refs[2].get::<String>().unwrap();
-            println!("call_lua1 ret {}: {}, {}", r1, r2, r3);
-        }
-        Err(e) => println!("Error: {}", e),
-    }
-
-    loop {
-        L.call_global(cstr!("run"));
-    }
-
-    L.close();
+    //测试
+    quanta.test();
+    //运行
+    quanta.run();
 }

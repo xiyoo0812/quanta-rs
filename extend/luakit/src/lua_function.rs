@@ -13,8 +13,8 @@ use lua::{ cstr, lua_State };
 use crate::lua_stack::{ LuaPush, LuaRead };
 
 pub struct FuncWrapper<F, P, R> {
-    pub function: F,
-    pub marker: PhantomData<(P, R)>,
+    function: F,
+    marker: PhantomData<(P, R)>,
 }
 
 pub trait FuncWrapperCall<P> {
@@ -73,6 +73,18 @@ fn lua_adapter<T, P, R>(L: *mut lua_State) -> int where T: FuncWrapperCall<P, Ou
         ret_value.native_to_lua(L)
     }
 }
+
+impl_wrapper_fn!(wrapper_fn,);
+impl_wrapper_fn!(wrapper_fn1, A);
+impl_wrapper_fn!(wrapper_fn2, A, B);
+impl_wrapper_fn!(wrapper_fn3, A, B, C);
+impl_wrapper_fn!(wrapper_fn4, A, B, C, D);
+impl_wrapper_fn!(wrapper_fn5, A, B, C, D, E);
+impl_wrapper_fn!(wrapper_fn6, A, B, C, D, E, F);
+impl_wrapper_fn!(wrapper_fn7, A, B, C, D, E, F, G);
+impl_wrapper_fn!(wrapper_fn8, A, B, C, D, E, F, G, H);
+impl_wrapper_fn!(wrapper_fn9, A, B, C, D, E, F, G, H, I);
+impl_wrapper_fn!(wrapper_fn10, A, B, C, D, E, F, G, H, I, J);
 
 impl_wrapper_fn_call!();
 impl_wrapper_fn_call!(A);

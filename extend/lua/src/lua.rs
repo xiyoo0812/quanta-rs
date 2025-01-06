@@ -192,8 +192,9 @@ extern "C" {
     pub fn lua_rawget(L: *mut lua_State, idx: int);
     pub fn lua_rawgeti(L: *mut lua_State, idx: int, n: int);
     pub fn lua_rawgetp(L: *mut lua_State, idx: int, p: *const char);
+
     pub fn lua_createtable(L: *mut lua_State, narr: int, nrec: int);
-    pub fn lua_newuserdata(L: *mut lua_State, sz: size_t) -> *mut void;
+    pub fn lua_newuserdatauv(L: *mut lua_State, sz: size_t, nuvalue : int) -> *mut void;
     pub fn lua_getmetatable(L: *mut lua_State, objindex: int) -> int;
     pub fn lua_getfenv(L: *mut lua_State, idx: int);
 
@@ -392,6 +393,10 @@ pub fn lua_tointeger(L: *mut lua_State, i: int) -> lua_Integer {
 
 pub fn lua_tounsigned(L: *mut lua_State, i: int) -> lua_Unsigned {
     unsafe { lua_tointegerx(L, i, ptr::null_mut()) as lua_Unsigned }
+}
+
+pub fn lua_newuserdata(L: *mut lua_State, sz: size_t) -> *mut void {
+    unsafe { lua_newuserdatauv(L, sz, 1) }
 }
 
 pub fn lua_remove(L: *mut lua_State, idx: int) {
