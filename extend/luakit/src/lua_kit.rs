@@ -161,11 +161,14 @@ impl Luakit {
     fn set_lua_path(&mut self, fieldname: &str, path: &str) {
         let mut buffer = String::new();
         let mut package = self.get::<LuaTable>(cstr!("package")).unwrap();
-        let dftmark = path.find(";;").unwrap_or(0);
-        if dftmark > 0 {
-            // 添加前缀部分
-            buffer.push_str(&path[..dftmark]);
-            buffer.push_str(";");
+        let res = path.find(";;");
+        if !res.is_none() {
+            let dftmark = res.unwrap();
+            if dftmark > 0 {
+                // 添加前缀部分
+                buffer.push_str(&path[..dftmark]);
+                buffer.push_str(";");
+            }
             // 添加默认路径
             let dft = package.get::<&str, String>(fieldname).unwrap_or_default();
             buffer.push_str(&dft);
@@ -175,10 +178,9 @@ impl Luakit {
                 buffer.push_str(&path[dftmark + 2..]);
             }
         } else {
-            buffer = path.to_string();
+            buffer.push_str(path);
         }
-        #[cfg(windows)]
-        {
+        #[cfg(windows)] {
             let cur_path = env::current_dir().unwrap();
             buffer = buffer.replace("!", cur_path.to_str().unwrap());
         }
