@@ -108,15 +108,18 @@ pub fn lstdfs_mkdir(L: *mut lua_State) -> int {
     }
 }
 
+pub fn lstdfs_remove_file(L: *mut lua_State) -> int {
+    let path = lua::lua_tolstring(L, 1).unwrap();
+    match fs::remove_file(path) {
+        Ok(_) => luakit::variadic_return1(L, true),
+        Err(e) => luakit::variadic_return2(L, false, e.to_string())
+    }
+}
+
 pub fn lstdfs_remove(L: *mut lua_State) -> int {
     let path = lua::lua_tolstring(L, 1).unwrap();
     let rmall = lua::lua_toboolean(L, 2);
-    let fpath = Path::new(path.as_str());
-    let res = if fpath.is_dir() {
-        if rmall { fs::remove_dir_all(path) } else { fs::remove_dir(path) }
-    } else {
-        fs::remove_file(path)
-    };
+    let res = if rmall { fs::remove_dir_all(path) } else { fs::remove_dir(path) };
     match res {
         Ok(_) => luakit::variadic_return1(L, true),
         Err(e) => luakit::variadic_return2(L, false, e.to_string())
