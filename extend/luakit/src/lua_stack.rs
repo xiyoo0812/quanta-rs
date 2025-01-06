@@ -134,6 +134,16 @@ macro_rules! integer_impl(
     );
 );
 
+integer_impl!(i8);
+integer_impl!(u8);
+integer_impl!(i16);
+integer_impl!(u16);
+integer_impl!(i32);
+integer_impl!(u32);
+integer_impl!(i64);
+integer_impl!(u64);
+integer_impl!(usize);
+
 macro_rules! numeric_impl(
     ($t:ident) => (
         impl LuaPush for $t {
@@ -155,16 +165,72 @@ macro_rules! numeric_impl(
     );
 );
 
-
-integer_impl!(i8);
-integer_impl!(u8);
-integer_impl!(i16);
-integer_impl!(u16);
-integer_impl!(i32);
-integer_impl!(u32);
-integer_impl!(i64);
-integer_impl!(u64);
-integer_impl!(usize);
-
 numeric_impl!(f32);
 numeric_impl!(f64);
+
+macro_rules! tuple_impl {
+    () => {
+        impl LuaPush for () {
+            fn native_to_lua(self, L: *mut lua_State) -> i32 {
+                unsafe { lua::lua_pushnil(L) };
+                1
+            }
+        }
+        impl LuaRead for () {
+            fn lua_to_native(_: *mut lua_State, _: i32) -> Option<Self> {
+                Some(())
+            }
+        }
+    };
+    ($first:ident, $($other:ident),*) => (
+        #[allow(unused_mut)]
+        #[allow(non_snake_case)]
+        impl<$first: LuaPush, $($other: LuaPush),*> LuaPush for ($first, $($other),*) {
+            fn native_to_lua(self, L: *mut lua_State) -> i32 {
+                match self {
+                    ($first, $($other),*) => {
+                        let mut total = $first.native_to_lua(L);
+                        $(total += $other.native_to_lua(L); )*
+                        total
+                    }
+                }
+            }
+        }
+
+        #[allow(non_snake_case)]
+        #[allow(unused_assignments)]
+        impl<$first: LuaRead, $($other: LuaRead),*> LuaRead for ($first, $($other),*) {
+            fn lua_to_native(L: *mut lua_State, index: i32) -> Option<($first, $($other),*)> {
+                let mut i = index;
+                let $first: $first = match LuaRead::lua_to_native(L, i) {
+                    Some(v) => v,
+                    None => return None
+                };
+                i += 1;
+                $(
+                    let $other: $other = match LuaRead::lua_to_native(L, i) {
+                        Some(v) => v,
+                        None => return None
+                    };
+                    i += 1;
+                )*
+                Some(($first, $($other),*))
+            }
+        }
+    );
+}
+
+tuple_impl!();
+tuple_impl!(A, );
+tuple_impl!(A, B);
+tuple_impl!(A, B, C);
+tuple_impl!(A, B, C, D);
+tuple_impl!(A, B, C, D, E);
+tuple_impl!(A, B, C, D, E, F);
+tuple_impl!(A, B, C, D, E, F, G);
+tuple_impl!(A, B, C, D, E, F, G, H);
+tuple_impl!(A, B, C, D, E, F, G, H, I);
+tuple_impl!(A, B, C, D, E, F, G, H, I, J);
+tuple_impl!(A, B, C, D, E, F, G, H, I, J, K);
+tuple_impl!(A, B, C, D, E, F, G, H, I, J, K, L);
+tuple_impl!(A, B, C, D, E, F, G, H, I, J, K, L, M);
