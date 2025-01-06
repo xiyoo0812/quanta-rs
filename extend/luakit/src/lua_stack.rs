@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 
 use lua::lua_State;
+use libc::c_char as char;
 use std::collections::HashMap;
 
 pub trait LuaPush {
@@ -35,12 +36,20 @@ impl LuaRead for bool {
     }
 }
 
+impl LuaPush for *const char {
+    fn native_to_lua(self, L: *mut lua_State) -> i32 {
+        unsafe { lua::lua_pushstring(L, self); };
+        1
+    }
+}
+
 impl LuaPush for String {
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
         unsafe { lua::lua_pushlstring(L, self.as_ptr() as *const i8, self.len() as usize); };
         1
     }
 }
+
 
 impl LuaRead for String {
     fn lua_to_native(L: *mut lua_State, index: i32) -> Option<String> {

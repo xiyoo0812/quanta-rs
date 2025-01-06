@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 
 use std::env;
+use std::marker::PhantomData;
 
 use libc::c_char as char;
 use lua::{ cstr, lua_State, lua_CFunction };
@@ -11,7 +12,7 @@ use crate::lua_function::*;
 use crate::lua_base::LuaGuard;
 use crate::lua_table::LuaTable;
 use crate::lua_reference::Reference;
-use crate::{ lua_call_function_impl, table_call_function_impl };
+use crate::{ lua_wrapper_function_impl, lua_call_function_impl, table_call_function_impl };
 
 pub struct Luakit {
     m_L: *mut lua_State,
@@ -158,6 +159,18 @@ impl Luakit {
     table_call_function_impl!(table_call8, A, B, C, D, E, F, G, H);
     table_call_function_impl!(table_call9, A, B, C, D, E, F, G, H, I);
     table_call_function_impl!(table_call10, A, B, C, D, E, F, G, H, I, J);
+
+    lua_wrapper_function_impl!(bind_function,);
+    lua_wrapper_function_impl!(bind_function1, A);
+    lua_wrapper_function_impl!(bind_function2, A, B);
+    lua_wrapper_function_impl!(bind_function3, A, B, C);
+    lua_wrapper_function_impl!(bind_function4, A, B, C, D);
+    lua_wrapper_function_impl!(bind_function5, A, B, C, D, E);
+    lua_wrapper_function_impl!(bind_function6, A, B, C, D, E, F);
+    lua_wrapper_function_impl!(bind_function7, A, B, C, D, E, F, G);
+    lua_wrapper_function_impl!(bind_function8, A, B, C, D, E, F, G, H);
+    lua_wrapper_function_impl!(bind_function9, A, B, C, D, E, F, G, H, I);
+    lua_wrapper_function_impl!(bind_function10, A, B, C, D, E, F, G, H, I, J);
 
     fn set_lua_path(&mut self, fieldname: &str, path: &str) {
         let mut buffer = String::new();

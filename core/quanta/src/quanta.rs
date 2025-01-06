@@ -61,15 +61,15 @@ impl Quanta {
     }
 
     pub fn test(&mut self) {
-        self.m_lua.set(cstr!("wrapper"), luakit::wrapper_fn(||{ 
-            println!("wrapper_fn"); return 1001; 
-        }));
-        self.m_lua.set(cstr!("wrapper1"), luakit::wrapper_fn1(|a : i32|{ 
-            println!("wrapper_fn1 {} {}", a, a * 2); return "abcdefg";
-        }));
-        self.m_lua.set(cstr!("wrapper2"), luakit::wrapper_fn2(|a : i32, b : i32|{ 
-            println!("wrapper_fn2 {} {} {}", a, b, a+b); return 1002;
-        }));
+        self.m_lua.bind_function(cstr!("wrapper"), ||{ 
+            println!("func_wrapper"); return 1001; 
+        });
+        self.m_lua.bind_function1(cstr!("wrapper1"), |a : i32|{ 
+            println!("func_wrapper1 {} {}", a, a * 2); return "abcdefg";
+        });
+        self.m_lua.bind_function2(cstr!("wrapper2"), |a : i32, b : i32|{ 
+            println!("func_wrapper2 {} {} {}", a, b, a+b); return 1002;
+        });
         
         let res = self.m_lua.call_global(cstr!("test"));
         match res {

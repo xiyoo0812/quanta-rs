@@ -3,11 +3,12 @@
 
 use libc::c_int as int;
 use libc::c_char as char;
-use lua::{ lua_State , lua_CFunction };
+use lua::{ lua_State, lua_CFunction };
+use std::marker::PhantomData;
 
 use crate::lua_function::*;
 use crate::lua_base::LuaGuard;
-use crate::lua_call_function_impl;
+use crate::{ lua_wrapper_function_impl, lua_call_function_impl };
 use crate::lua_reference::Reference;
 use crate::lua_stack::{LuaRead, LuaPush};
 
@@ -83,6 +84,18 @@ impl LuaTable {
     lua_call_function_impl!(call8, A, B, C, D, E, F, G, H);
     lua_call_function_impl!(call9, A, B, C, D, E, F, G, H, I);
     lua_call_function_impl!(call10, A, B, C, D, E, F, G, H, I, J);
+
+    lua_wrapper_function_impl!(bind_function,);
+    lua_wrapper_function_impl!(bind_function1, A);
+    lua_wrapper_function_impl!(bind_function2, A, B);
+    lua_wrapper_function_impl!(bind_function3, A, B, C);
+    lua_wrapper_function_impl!(bind_function4, A, B, C, D);
+    lua_wrapper_function_impl!(bind_function5, A, B, C, D, E);
+    lua_wrapper_function_impl!(bind_function6, A, B, C, D, E, F);
+    lua_wrapper_function_impl!(bind_function7, A, B, C, D, E, F, G);
+    lua_wrapper_function_impl!(bind_function8, A, B, C, D, E, F, G, H);
+    lua_wrapper_function_impl!(bind_function9, A, B, C, D, E, F, G, H, I);
+    lua_wrapper_function_impl!(bind_function10, A, B, C, D, E, F, G, H, I, J);
 }
 
 impl Drop for LuaTable {

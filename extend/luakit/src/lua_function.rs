@@ -5,35 +5,25 @@
 use libc::c_int as int;
 use libc::c_char as char;
 
-use std::mem;
-use std::ptr;
+use std::{ mem, ptr };
 use std::marker::PhantomData;
 
 use lua::{ cstr, lua_State };
 use crate::lua_stack::{ LuaPush, LuaRead };
 
 pub struct FuncWrapper<F, P, R> {
-    function: F,
-    marker: PhantomData<(P, R)>,
+    pub function: F,
+    pub marker: PhantomData<(P, R)>,
 }
 
-pub trait FuncWrapperCall<P> {
+pub trait FuncAdapter<P> {
     type Output;
     fn call(&mut self, params: P) -> Self::Output;
 }
 
-#[macro_export]
-macro_rules! impl_wrapper_fn {
-    ($name:ident, $($p:ident),*) => (
-        pub fn $name<Z, R $(, $p)*>(f: Z) -> FuncWrapper<Z, ($($p,)*), R> where Z: FnMut($($p),*) -> R {
-            FuncWrapper { function: f, marker: PhantomData, }
-        }
-    )
-}
-
-macro_rules! impl_wrapper_fn_call {
+macro_rules! impl_func_adapter {
     ($($p:ident),*) => (
-        impl<Z, R $(,$p)*> FuncWrapperCall<($($p,)*)> for FuncWrapper<Z, ($($p,)*), R> where Z: FnMut($($p),*) -> R {
+        impl<Z, R $(,$p)*> FuncAdapter<($($p,)*)> for FuncWrapper<Z, ($($p,)*), R> where Z: FnMut($($p),*) -> R {
             type Output = R;
             fn call(&mut self, params: ($($p,)*)) -> Self::Output {
                 let ($($p,)*) = params;
@@ -56,7 +46,7 @@ macro_rules! impl_wrapper_fn_call {
     )
 }
 
-fn lua_adapter<T, P, R>(L: *mut lua_State) -> int where T: FuncWrapperCall<P, Output = R>, P: LuaRead + 'static, R: LuaPush {
+fn lua_adapter<T, P, R>(L: *mut lua_State) -> int where T: FuncAdapter<P, Output = R>, P: LuaRead + 'static, R: LuaPush {
     unsafe {
         let data_raw = lua::lua_touserdata(L, lua::lua_upvalueindex(1));
         let data: &mut T = mem::transmute(data_raw);
@@ -74,29 +64,29 @@ fn lua_adapter<T, P, R>(L: *mut lua_State) -> int where T: FuncWrapperCall<P, Ou
     }
 }
 
-impl_wrapper_fn!(wrapper_fn,);
-impl_wrapper_fn!(wrapper_fn1, A);
-impl_wrapper_fn!(wrapper_fn2, A, B);
-impl_wrapper_fn!(wrapper_fn3, A, B, C);
-impl_wrapper_fn!(wrapper_fn4, A, B, C, D);
-impl_wrapper_fn!(wrapper_fn5, A, B, C, D, E);
-impl_wrapper_fn!(wrapper_fn6, A, B, C, D, E, F);
-impl_wrapper_fn!(wrapper_fn7, A, B, C, D, E, F, G);
-impl_wrapper_fn!(wrapper_fn8, A, B, C, D, E, F, G, H);
-impl_wrapper_fn!(wrapper_fn9, A, B, C, D, E, F, G, H, I);
-impl_wrapper_fn!(wrapper_fn10, A, B, C, D, E, F, G, H, I, J);
+impl_func_adapter!();
+impl_func_adapter!(A);
+impl_func_adapter!(A, B);
+impl_func_adapter!(A, B, C);
+impl_func_adapter!(A, B, C, D);
+impl_func_adapter!(A, B, C, D, E);
+impl_func_adapter!(A, B, C, D, E, F);
+impl_func_adapter!(A, B, C, D, E, F, G);
+impl_func_adapter!(A, B, C, D, E, F, G, H);
+impl_func_adapter!(A, B, C, D, E, F, G, H, I);
+impl_func_adapter!(A, B, C, D, E, F, G, H, I, J);
 
-impl_wrapper_fn_call!();
-impl_wrapper_fn_call!(A);
-impl_wrapper_fn_call!(A, B);
-impl_wrapper_fn_call!(A, B, C);
-impl_wrapper_fn_call!(A, B, C, D);
-impl_wrapper_fn_call!(A, B, C, D, E);
-impl_wrapper_fn_call!(A, B, C, D, E, F);
-impl_wrapper_fn_call!(A, B, C, D, E, F, G);
-impl_wrapper_fn_call!(A, B, C, D, E, F, G, H);
-impl_wrapper_fn_call!(A, B, C, D, E, F, G, H, I);
-impl_wrapper_fn_call!(A, B, C, D, E, F, G, H, I, J);
+#[macro_export]
+macro_rules! lua_wrapper_function_impl {
+    ($name:ident, $($p:ident),*) => (
+        pub fn $name<Z, R $(, $p)*>(&mut self, fname: *const char, f: Z) 
+            where Z: FnMut($($p),*) -> R, FuncWrapper<Z, ($($p,)*), R>: LuaPush {
+            let wrapper = FuncWrapper { function: f, marker: PhantomData };
+            self.set(fname, wrapper);
+        }
+    )
+}
+
 
 //get global function
 //-------------------------------------------------------------------------------
