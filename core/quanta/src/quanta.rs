@@ -1,11 +1,15 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
+use std::env;
+use std::collections::HashMap;
+
 use lua::cstr;
 use luakit::Luakit;
 
 pub struct Quanta {
     m_lua: Luakit,
+    m_environs: HashMap<String, String>,
 }
 
 impl Drop for Quanta {
@@ -18,11 +22,21 @@ impl Quanta {
     pub fn new() -> Quanta {
         Quanta {
             m_lua: Luakit::new(),
+            m_environs: HashMap::new(),
         }
     }
 
     pub fn luakit(&mut self) -> &mut Luakit {
         &mut self.m_lua
+    }
+
+    pub fn get_platform(&mut self) -> &str {
+        match env::consts::OS {
+            "macos" => "apple",
+            "windows" => "windows",
+            "linux" => "linux",
+            _ => "unknown",
+        }
     }
 
     pub fn init(&mut self) ->bool {
@@ -44,6 +58,34 @@ impl Quanta {
             return false;
         }
         return true;
+    }
+
+    pub fn set_env(&mut self, key: &str, val: &str, over : bool) {
+        if over && !self.m_environs.contains_key(key) {
+            self.m_environs.insert(key.to_string(), val.to_string());
+        }
+    }
+
+    pub fn get_env(&mut self, key: &str) -> String {
+        match self.m_environs.get(key) {
+            Some(val) => val.clone(),
+            None => String::new(),
+        }
+    } 
+
+    pub fn add_path(&mut self, field : &str, path: &str) {
+        match self.m_environs.get(field) {
+            Some(val) => {
+                let mut new_path = val.clone();
+                new_path.push_str(path);
+                self.m_lua.set_path(field, new_path.as_str());
+                self.m_environs.insert(field.to_string(), new_path);
+            }
+            None => {
+                self.m_lua.set_path(field, path);
+                self.m_environs.insert(field.to_string(), path.to_string());
+            }
+        }
     }
 
     pub fn set_path(&mut self, field : &str, path : &str) {

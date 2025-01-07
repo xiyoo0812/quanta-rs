@@ -30,7 +30,7 @@ impl LuaPush for bool {
 impl LuaRead for bool {
     fn lua_to_native(L: *mut lua_State, index: i32) -> Option<bool> {
         if !lua::lua_isboolean(L, index) {
-            return None;
+            return Some(false)
         }
         Some(lua::lua_toboolean(L, index))
     }
@@ -135,7 +135,7 @@ macro_rules! integer_impl(
                 let mut success = 0;
                 let val = unsafe { lua::lua_tointegerx(L, index, &mut success) };
                 match success {
-                    0 => None,
+                    0 => Some(0),
                     _ => Some(val as $t)
                 }
             }
@@ -166,7 +166,7 @@ macro_rules! numeric_impl(
                 let mut success = 0;
                 let val = unsafe { lua::lua_tonumberx(L, index, &mut success) };
                 match success {
-                    0 => None,
+                    0 => Some(0.0),
                     _ => Some(val as $t)
                 }
             }

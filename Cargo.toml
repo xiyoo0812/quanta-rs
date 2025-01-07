@@ -4,6 +4,8 @@ members = [
     "extend/lua",
     "extend/luakit",
     "extend/ljson",
+    "extend/ltoml",
+    "extend/lyaml",
     "extend/lstdfs",
     "extend/ltimer",
     "core/quanta",
