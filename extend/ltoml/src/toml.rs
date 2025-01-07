@@ -4,9 +4,9 @@
 extern crate toml;
 
 use libc::c_int as int;
-use lua::{ cstr,  ternary, lua_State };
-
 use toml::{ Value, Table };
+use lua::{ cstr,  ternary, lua_State };
+use std::{fs::File, fs::OpenOptions, io::Read, io::Write};
 
 pub const MAX_ENCODE_DEPTH: u32     = 16;
 
@@ -154,5 +154,43 @@ pub fn encode(L: *mut lua_State) -> int {
             Err(_) => lua::luaL_error(L, cstr!("encode can't pack too depth table")),
         }
         return 1;
+    }
+}
+
+pub fn open(L: *mut lua_State) -> int {
+    let filename = lua::lua_tolstring(L, 1).unwrap_or_default();
+    let res = File::open(filename);
+    match res {
+        Ok(mut f) => {
+            let mut toml = String::new();
+            if f.read_to_string(&mut toml).is_err() {
+                lua::luaL_error(L, cstr!("read file error"));
+            };
+            return decode_core(L, true, toml);
+        },
+        Err(_) => lua::luaL_error(L, cstr!("open file error"))
+    }
+}
+
+pub fn save(L: *mut lua_State) -> int {
+    unsafe {
+        let filename = lua::lua_tolstring(L, 1).unwrap_or_default();
+        let res = OpenOptions::new().append(false).create(true).open(filename);
+        match res {
+            Ok(mut f) => {
+                let val = encode_one(L, true, 2, 0);
+                let eres  = toml::to_string(&val);
+                match eres {
+                    Ok(x) => {
+                        if f.write_all(x.as_bytes()).is_err() {
+                            lua::luaL_error(L, cstr!("write file error"));
+                        };
+                        return 0;
+                    },
+                    Err(_) => lua::luaL_error(L, cstr!("encode toml error"))
+                }
+            },
+            Err(_) => lua::luaL_error(L, cstr!("open file error"))
+        }
     }
 }

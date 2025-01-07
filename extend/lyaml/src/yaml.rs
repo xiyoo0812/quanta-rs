@@ -7,6 +7,7 @@ use libc::c_int as int;
 use lua::{ cstr,  ternary, lua_State };
 
 use serde_yml::{ Mapping, Number, Value };
+use std::{fs::File, fs::OpenOptions, io::Read, io::Write};
 
 pub const MAX_ENCODE_DEPTH: u32     = 16;
 
@@ -80,45 +81,45 @@ pub unsafe fn decode_number(L: *mut lua_State, val: &Number) {
     lua::lua_pushnumber(L, val.as_f64().unwrap());
 }
 
-pub unsafe fn decode_array(L: *mut lua_State, val: &Vec<Value>, numkeyable: bool) {
+pub unsafe fn decode_array(L: *mut lua_State, val: &Vec<Value>) {
     lua::lua_createtable(L, val.len() as i32, 0);
     for (i, v) in val.iter().enumerate() {
         lua::lua_pushinteger(L, i as isize + 1);
-        decode_one(L, v, numkeyable);
+        decode_one(L, v);
         lua::lua_settable(L, -3);
     }
 }
 
-pub unsafe fn decode_object(L: *mut lua_State, val: &Mapping, numkeyable: bool) {
+pub unsafe fn decode_object(L: *mut lua_State, val: &Mapping) {
     lua::lua_createtable(L, 0, val.len() as i32);
     for (k, v) in val.iter() {
-        decode_one(L, k, numkeyable);
-        decode_one(L, v, numkeyable);
+        decode_one(L, k);
+        decode_one(L, v);
         lua::lua_settable(L, -3);
     }
 }
 
-pub unsafe fn decode_one(L: *mut lua_State, value: &Value, numkeyable: bool) -> int {
+pub unsafe fn decode_one(L: *mut lua_State, value: &Value) -> int {
     match value {
         Value::Tagged(_) => {},
         Value::Null => lua::lua_pushnil(L),
         Value::Number(val) => decode_number(L, val),
         Value::Bool(val) => lua::lua_pushboolean(L, *val as i32),
-        Value::Sequence(val) => decode_array(L, val, numkeyable),
-        Value::Mapping(val) => decode_object(L, val, numkeyable),
+        Value::Sequence(val) => decode_array(L, val),
+        Value::Mapping(val) => decode_object(L, val),
         Value::String(val) => lua::lua_pushlstring(L, val.as_ptr() as *const i8, val.len() as usize),
     }
     return 1;
 }
 
-pub fn decode_core(L: *mut lua_State, numkeyable: bool, yaml: String) -> int {
+pub fn decode_core(L: *mut lua_State, yaml: String) -> int {
     let res = serde_yml::from_str::<Value>(yaml.as_str());
     match res {
         Ok(mut val) => {
             if val.apply_merge().is_err() {
                 lua::luaL_error(L, cstr!("encode can't unpack json"));
             }
-            unsafe { decode_one(L, &val, numkeyable) }
+            unsafe { decode_one(L, &val) }
         },
         Err(_) => lua::luaL_error(L, cstr!("encode can't unpack json"))
     }
@@ -126,8 +127,7 @@ pub fn decode_core(L: *mut lua_State, numkeyable: bool, yaml: String) -> int {
 
 pub fn decode(L: *mut lua_State) -> int {
     let yaml = lua::lua_tolstring(L, 1).unwrap_or_default();
-    let numkeyable = lua::lua_toboolean(L, 2);
-    return decode_core(L, numkeyable, yaml);
+    return decode_core(L, yaml);
 }
 
 pub fn encode(L: *mut lua_State) -> int {
@@ -142,3 +142,42 @@ pub fn encode(L: *mut lua_State) -> int {
         return 1;
     }
 }
+
+pub fn open(L: *mut lua_State) -> int {
+    let filename = lua::lua_tolstring(L, 1).unwrap_or_default();
+    let res = File::open(filename);
+    match res {
+        Ok(mut f) => {
+            let mut yaml = String::new();
+            if f.read_to_string(&mut yaml).is_err() {
+                lua::luaL_error(L, cstr!("read file error"));
+            };
+            return decode_core(L, yaml);
+        },
+        Err(_) => lua::luaL_error(L, cstr!("open file error"))
+    }
+}
+
+pub fn save(L: *mut lua_State) -> int {
+    unsafe {
+        let filename = lua::lua_tolstring(L, 1).unwrap_or_default();
+        let res = OpenOptions::new().append(false).create(true).open(filename);
+        match res {
+            Ok(mut f) => {
+                let val = encode_one(L, true, 2, 0);
+                let eres  = serde_yml::to_string(&val);
+                match eres {
+                    Ok(x) => {
+                        if f.write_all(x.as_bytes()).is_err() {
+                            lua::luaL_error(L, cstr!("write file error"));
+                        };
+                        return 0;
+                    },
+                    Err(_) => lua::luaL_error(L, cstr!("encode yaml error"))
+                }
+            },
+            Err(_) => lua::luaL_error(L, cstr!("open file error"))
+        }
+    }
+}
+
