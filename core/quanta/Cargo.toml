@@ -1,0 +1,16 @@
+[package]
+name = "quanta"
+version = "0.1.0"
+edition = "2021"
+
+#authors = ["xiyoo0812"]
+#description = "Bindings for Lua 5.4"
+#repository = "https://github.com/xiyoo0812/quanta-rs"
+#license = "MIT/Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+libc = "0.2.169"
+lua = { path = "../../extend/lua"}
+luakit = { path = "../../extend/luakit"}

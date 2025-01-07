@@ -1,17 +1,14 @@
-[workspace.lints.rust]
-# unsafe_code = "forbid"
-# unused = "allow" # For experimental dev.
-
 [workspace]
-#authors = ["xiyoo0812"]
-#description = "Bindings for Lua 5.4"
-#repository = "https://github.com/xiyoo0812/quanta-rs"
-#license = "MIT/Apache-2.0"
-
 resolver = "2"
 members = [
     "extend/lua",
+    "extend/luakit",
     "extend/ljson",
+    "extend/ltoml",
+    "extend/lyaml",
+    "extend/lstdfs",
+    "extend/ltimer",
+    "core/quanta",
 ]
 
 [profile.release]

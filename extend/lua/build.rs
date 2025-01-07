@@ -1,9 +1,8 @@
-extern crate pkg_config;
 extern crate cc;
 
 fn main() {
     let mut build = cc::Build::new();
-    build.file("lua/src/onelua.c").define("MAKE_LUA", "1");
+    build.file("lua/onelua.c").define("MAKE_LIB", "1");
 
     if cfg!(windows) {
         build.define("LUA_USE_WINDOWS", "1");
@@ -11,9 +10,9 @@ fn main() {
     if cfg!(unix) {
         build.define("LUA_USE_LINUX", "1");
     }
-    if cfg!(macos) {
+    if cfg!(target_os = "macos") {
         build.define("LUA_USE_MACOSX", "1");
     }
 
-    build.include("lua/src").compile("liblua.a");
+    build.include("lua").compile("liblua.a");
 }

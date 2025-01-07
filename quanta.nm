@@ -1,0 +1,15 @@
+.PHONY: clean all build pre-build post-build
+all: clean pre-build build post-build
+
+pre-build:
+    mkdir -p bin
+
+build:
+    cargo build
+
+clean:
+    cargo clean
+
+post-build:
+    xcopy target\debug\deps\*.dll bin /y /s
+    copy target\debug\deps\quanta.exe bin
