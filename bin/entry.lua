@@ -7,6 +7,8 @@ function startup()
 	require "fs"
 	require "json"
 	require "timer"
+	require "toml"
+	require "yaml"
 	require "test"
 end
 

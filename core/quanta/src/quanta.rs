@@ -40,10 +40,12 @@ impl Quanta {
     }
 
     pub fn init(&mut self) ->bool {
-        let entry = self.m_lua.run_file(cstr!("entry.lua"));
-        if entry.is_err() {
-            println!("run file Error: {}", entry.unwrap());
-            return false;
+        match self.m_lua.run_file(cstr!("entry.lua")) {
+            Ok(_) => {},
+            Err(e) => {
+                println!("run file Error: {}", e);
+                return false;
+            }
         }
         self.m_lua.set_function(cstr!("set_path"), |L| {
             let mut kit = Luakit::load(L);
@@ -52,10 +54,12 @@ impl Quanta {
             kit.set_path(field.as_str(), path.as_str());
             return 0;
         });
-        let startup = self.m_lua.call_global(cstr!("startup"));
-        if startup.is_err() {
-            println!("call startup Error: {}", startup.unwrap());
-            return false;
+        match self.m_lua.call_global(cstr!("startup")) {
+            Ok(_) => {},
+            Err(e) => {
+                println!("call startup Error: {}", e);
+                return false;
+            }
         }
         return true;
     }
@@ -94,10 +98,12 @@ impl Quanta {
 
     pub fn run(&mut self) {
         while self.m_lua.get_function(cstr!("run")) {
-            let res = self.m_lua.call_function();
-            if res.is_err() {
-                println!("Error: {}", res.unwrap());
-                break;
+            match self.m_lua.call_function(){
+                Ok(_) => {},
+                Err(e) => {
+                    println!("Error: {}", e);
+                    break;
+                }
             }
         }
     }

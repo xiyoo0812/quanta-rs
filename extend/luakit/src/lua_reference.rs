@@ -25,7 +25,7 @@ impl Reference {
     }
 
     pub fn get<R>(&mut self) -> Option<R> where R: LuaRead {
-        let _ = LuaGuard::new(self.m_L);
+        let _gl = LuaGuard::new(self.m_L);
         unsafe { lua::lua_rawgeti(self.m_L, lua::LUA_REGISTRYINDEX, self.m_index); }
         return LuaRead::lua_to_native(self.m_L, -1);
     }

@@ -30,7 +30,7 @@ impl LuaTable {
     }
 
     pub fn get<K, R>(&mut self, key: K) -> Option<R> where K: LuaPush, R: LuaRead {
-        let _ = LuaGuard::new(self.m_L);
+        let _gl = LuaGuard::new(self.m_L);
         unsafe { lua::lua_rawgeti(self.m_L, lua::LUA_REGISTRYINDEX, self.m_index); }
         key.native_to_lua(self.m_L);
         unsafe { lua::lua_gettable(self.m_L, -2); }
@@ -54,7 +54,7 @@ impl LuaTable {
     }
 
     pub fn set_function(&mut self, name: *const char, f : lua_CFunction) {
-        let _ = LuaGuard::new(self.m_L);
+        let _gl = LuaGuard::new(self.m_L);
         unsafe { 
             lua::lua_rawgeti(self.m_L, lua::LUA_REGISTRYINDEX, self.m_index); 
             lua::lua_pushcfunction(self.m_L, f);

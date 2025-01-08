@@ -50,13 +50,13 @@ impl Luakit {
     }
 
     pub fn get<R>(&mut self, key: *const char) -> Option<R> where R: LuaRead {
-        let _ = LuaGuard::new(self.m_L);
+        let _gl = LuaGuard::new(self.m_L);
         unsafe { lua::lua_getglobal(self.m_L, key); }
         return LuaRead::lua_to_native(self.m_L, -1);
     }
 
     pub fn get_path(&mut self, field: *const char) -> String {
-        let _ = LuaGuard::new(self.m_L);
+        let _gl = LuaGuard::new(self.m_L);
         unsafe {
             lua::lua_getglobal(self.m_L, cstr!("package"));
             lua::lua_getfield(self.m_L, -1, field);
@@ -73,7 +73,7 @@ impl Luakit {
     }
 
     pub fn set_searchers(&mut self, f : lua_CFunction) {
-        let _ = LuaGuard::new(self.m_L);
+        let _gl = LuaGuard::new(self.m_L);
         unsafe {
             lua::lua_getglobal(self.m_L, cstr!("package"));
             lua::lua_getfield(self.m_L, -1, cstr!("searchers"));
@@ -83,7 +83,7 @@ impl Luakit {
     }
 
     pub fn set_function(&mut self, name: *const char, f : lua_CFunction) {
-        let _ = LuaGuard::new(self.m_L);
+        let _gl = LuaGuard::new(self.m_L);
         unsafe {
             lua::lua_pushcfunction(self.m_L, f);
             lua::lua_setglobal(self.m_L, name);
@@ -91,7 +91,7 @@ impl Luakit {
     }
 
     pub fn new_table(&mut self, name: Option<*const char>) -> LuaTable {
-        let _ = LuaGuard::new(self.m_L);
+        let _gl = LuaGuard::new(self.m_L);
         unsafe { 
             lua::lua_createtable(self.m_L, 0, 8);
             if !name.is_none() {
@@ -103,7 +103,7 @@ impl Luakit {
     }
     
     pub fn run_file(&mut self, file: *const char) ->Result<bool, String> {
-        let _ = LuaGuard::new(self.m_L);
+        let _gl = LuaGuard::new(self.m_L);
         if lua::luaL_loadfile(self.m_L, file) == 1 {
             let err= lua::lua_tostring(self.m_L, -1).unwrap();
             print!("lua loadfile err: {}", err);
@@ -113,7 +113,7 @@ impl Luakit {
     }
 
     pub fn run_script(&mut self, script: *const char) ->Result<bool, String> {
-        let _ = LuaGuard::new(self.m_L);
+        let _gl = LuaGuard::new(self.m_L);
         unsafe {
             if lua::luaL_loadstring(self.m_L, script) == 1 {
                 let err= lua::lua_tostring(self.m_L, -1).unwrap();

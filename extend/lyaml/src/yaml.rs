@@ -149,34 +149,34 @@ pub fn open(L: *mut lua_State) -> int {
     match res {
         Ok(mut f) => {
             let mut yaml = String::new();
-            if f.read_to_string(&mut yaml).is_err() {
-                lua::luaL_error(L, cstr!("read file error"));
+            match f.read_to_string(&mut yaml) {
+                Ok(_) => { return decode_core(L, yaml); },
+                Err(e) => lua::luaL_error(L, e.to_string().as_ptr() as *const i8)
             };
-            return decode_core(L, yaml);
         },
-        Err(_) => lua::luaL_error(L, cstr!("open file error"))
+        Err(e) => lua::luaL_error(L, e.to_string().as_ptr() as *const i8)
     }
 }
 
 pub fn save(L: *mut lua_State) -> int {
     unsafe {
         let filename = lua::lua_tolstring(L, 1).unwrap_or_default();
-        let res = OpenOptions::new().append(false).create(true).open(filename);
+        let res = OpenOptions::new().write(true).create(true).open(filename);
         match res {
             Ok(mut f) => {
                 let val = encode_one(L, true, 2, 0);
                 let eres  = serde_yml::to_string(&val);
                 match eres {
                     Ok(x) => {
-                        if f.write_all(x.as_bytes()).is_err() {
-                            lua::luaL_error(L, cstr!("write file error"));
+                        match f.write_all(x.as_bytes()) {
+                            Ok(_) => return 0,
+                            Err(e) => lua::luaL_error(L, e.to_string().as_ptr() as *const i8)
                         };
-                        return 0;
                     },
-                    Err(_) => lua::luaL_error(L, cstr!("encode yaml error"))
+                    Err(e) => lua::luaL_error(L, e.to_string().as_ptr() as *const i8)
                 }
             },
-            Err(_) => lua::luaL_error(L, cstr!("open file error"))
+            Err(e) => lua::luaL_error(L, e.to_string().as_ptr() as *const i8)
         }
     }
 }

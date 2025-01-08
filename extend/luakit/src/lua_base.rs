@@ -30,6 +30,7 @@ pub fn is_lua_array(L: *mut lua_State, idx: i32, emy_as_arr: bool) -> bool {
     if raw_len == 0 && !emy_as_arr {
         return false;
     }
+    let _gl = LuaGuard::new(L);
     let index = unsafe { lua::lua_absindex(L, idx) };
     unsafe { lua::lua_pushnil(L) };
     let mut curlen : isize = 0;
