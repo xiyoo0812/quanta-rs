@@ -3,6 +3,7 @@
 
 use lua::lua_State;
 use libc::c_char as char;
+use std::thread::ThreadId;
 use std::collections::HashMap;
 
 pub trait LuaPush {
@@ -50,10 +51,17 @@ impl LuaPush for String {
     }
 }
 
-
 impl LuaRead for String {
     fn lua_to_native(L: *mut lua_State, index: i32) -> Option<String> {
         lua::lua_tolstring(L, index)
+    }
+}
+
+impl LuaPush for ThreadId {
+    //临时先这样，后面等ThreadId支持au_u64，再修改
+    fn native_to_lua(self, L: *mut lua_State) -> i32 {
+        unsafe { lua::lua_pushinteger(L, &self as *const ThreadId as isize); };
+        1
     }
 }
 

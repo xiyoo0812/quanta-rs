@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
+use std::env;
 use lua::lua_State;
 use libc::c_int as int;
 
@@ -19,6 +20,15 @@ impl LuaGuard {
 impl Drop for LuaGuard {
     fn drop(&mut self) {
         unsafe { lua::lua_settop(self.m_L, self.m_top); }
+    }
+}
+
+pub fn get_platform() -> &'static str {
+    match env::consts::OS {
+        "macos" => "apple",
+        "windows" => "windows",
+        "linux" => "linux",
+        _ => "unknown",
     }
 }
 
