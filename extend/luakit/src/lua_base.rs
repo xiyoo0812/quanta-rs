@@ -32,6 +32,10 @@ pub fn get_platform() -> &'static str {
     }
 }
 
+pub fn lua_get_meta_name<T: 'static>() -> String {
+    format!("__lua_class_meta_{}__", std::any::type_name::<T>())
+}
+
 pub fn is_lua_array(L: *mut lua_State, idx: i32, emy_as_arr: bool) -> bool {
     if !lua::lua_istable(L, idx) {
         return false;
