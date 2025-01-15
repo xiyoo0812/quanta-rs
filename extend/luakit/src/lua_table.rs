@@ -108,7 +108,7 @@ impl Drop for LuaTable {
 
 impl LuaPush for LuaTable {
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
-        unsafe { lua::lua_rawgeti(L, lua::LUA_REGISTRYINDEX, self.m_index) }
+        unsafe { lua::lua_rawgeti(L, lua::LUA_REGISTRYINDEX, self.m_index); }
         1
     }
 }

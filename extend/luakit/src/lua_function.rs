@@ -79,10 +79,19 @@ impl_func_adapter!(A, B, C, D, E, F, G, H, I, J);
 #[macro_export]
 macro_rules! lua_wrapper_function_impl {
     ($name:ident, $($p:ident),*) => (
-        pub fn $name<Z, R $(, $p)*>(&mut self, fname: *const char, f: Z) 
+        pub fn $name<Z, R $(, $p)*>(&mut self, fname: *const char, f: Z)
             where Z: FnMut($($p),*) -> R, FuncWrapper<Z, ($($p,)*), R>: LuaPush {
             let wrapper = FuncWrapper { function: f, marker: PhantomData };
             self.set(fname, wrapper);
+        }
+    )
+}
+
+#[macro_export]
+macro_rules! lua_wrapper_obj_member_impl {
+    ($name:ident) => (
+        pub fn $name<Z, P, $p>(&mut self, $p: P) -> FuncWrapper<Z, $p, P> where P: LuaPush {
+            return FuncWrapper { function: || { return self.$p }, marker: PhantomData };
         }
     )
 }

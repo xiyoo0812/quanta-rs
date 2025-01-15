@@ -11,6 +11,7 @@ pub trait LuaPush {
 }
 
 pub trait LuaRead: Sized {
+    fn __gc() ->bool { true }
     fn lua_to_native(L: *mut lua_State, index: i32) -> Option<Self>;
 }
 

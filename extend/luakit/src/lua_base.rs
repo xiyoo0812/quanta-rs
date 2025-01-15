@@ -32,7 +32,7 @@ pub fn get_platform() -> &'static str {
     }
 }
 
-pub fn lua_get_meta_name<T: 'static>() -> String {
+pub fn lua_get_meta_name<T>() -> String {
     format!("__lua_class_meta_{}__", std::any::type_name::<T>())
 }
 

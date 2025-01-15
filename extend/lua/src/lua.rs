@@ -186,12 +186,12 @@ extern "C" {
     pub fn lua_pushlightuserdata(L: *mut lua_State, p: *mut void);
     pub fn lua_pushthread(L: *mut lua_State) -> int;
 
-    pub fn lua_getglobal(L: *mut lua_State, var: *const char);
-    pub fn lua_gettable(L: *mut lua_State, idx: int);
-    pub fn lua_getfield(L: *mut lua_State, idx: int, k: *const char);
-    pub fn lua_rawget(L: *mut lua_State, idx: int);
-    pub fn lua_rawgeti(L: *mut lua_State, idx: int, n: int);
-    pub fn lua_rawgetp(L: *mut lua_State, idx: int, p: *const char);
+    pub fn lua_getglobal(L: *mut lua_State, var: *const char) -> int;
+    pub fn lua_gettable(L: *mut lua_State, idx: int) -> int;
+    pub fn lua_getfield(L: *mut lua_State, idx: int, k: *const char) -> int;
+    pub fn lua_rawget(L: *mut lua_State, idx: int) -> int;
+    pub fn lua_rawgeti(L: *mut lua_State, idx: int, n: int) -> int;
+    pub fn lua_rawgetp(L: *mut lua_State, idx: int, p: *const char) -> int;
 
     pub fn lua_createtable(L: *mut lua_State, narr: int, nrec: int);
     pub fn lua_newuserdatauv(L: *mut lua_State, sz: size_t, nuvalue : int) -> *mut void;
@@ -327,7 +327,7 @@ pub fn lua_isnoneornil(L: *mut lua_State, idx: int) -> bool {
 }
 
 pub fn lua_pushglobaltable(L: *mut lua_State) {
-    unsafe { lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS) }
+    unsafe { lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS); }
 }
 
 pub fn lua_from_cstr(s: *const char) -> Option<String> {
@@ -397,6 +397,10 @@ pub fn lua_tounsigned(L: *mut lua_State, i: int) -> lua_Unsigned {
 
 pub fn lua_newuserdata(L: *mut lua_State, sz: size_t) -> *mut void {
     unsafe { lua_newuserdatauv(L, sz, 1) }
+}
+
+pub fn luaL_getmetatable(L: *mut lua_State, k: *const char) -> int {
+    unsafe { lua_getfield(L, LUA_REGISTRYINDEX, k) }
 }
 
 pub fn lua_remove(L: *mut lua_State, idx: int) {
