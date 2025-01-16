@@ -245,6 +245,7 @@ extern "C" {
 
     pub fn luaL_openlibs(L: *mut lua_State);
     pub fn luaL_newstate() -> *mut lua_State;
+    pub fn luaL_newmetatable(L: *mut lua_State, tname: *const char) -> int;
     pub fn luaL_setmetatable(L: *mut lua_State, tname: *const char);
     pub fn luaL_loadstring(L: *mut lua_State, p: *const char) -> int;
     pub fn luaL_loadbufferx(L: *mut lua_State, buff: *const char, sz: size_t, name: *const char, mode: *const char) -> int;

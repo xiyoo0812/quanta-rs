@@ -22,7 +22,7 @@ impl LuaTable {
         unsafe { LuaTable {  m_L: L, m_index: lua::luaL_ref(L, lua::LUA_REGISTRYINDEX) } }
     }
     
-    pub fn newref(L: *mut lua_State, index: int) -> LuaTable {
+    pub fn load(L: *mut lua_State, index: int) -> LuaTable {
         unsafe {
             lua::lua_pushvalue(L, index);
             LuaTable {  m_L: L, m_index: lua::luaL_ref(L, lua::LUA_REGISTRYINDEX) }
@@ -42,6 +42,19 @@ impl LuaTable {
         key.native_to_lua(self.m_L);
         val.native_to_lua(self.m_L);
         unsafe { lua::lua_settable(self.m_L, -3); }
+    }
+
+    pub fn new_table(&mut self, name: Option<*const char>) -> LuaTable {
+        let _gl = LuaGuard::new(self.m_L);
+        unsafe {
+            lua::lua_rawgeti(self.m_L, lua::LUA_REGISTRYINDEX, self.m_index);
+            lua::lua_createtable(self.m_L, 0, 8);
+            if !name.is_none() {
+                lua::lua_pushvalue(self.m_L, -1);
+                lua::lua_setfield(self.m_L, -2, name.unwrap());
+            }
+            LuaTable::new(self.m_L)
+        }
     }
 
     pub fn get_function(&mut self, function: *const char) -> bool {
@@ -115,6 +128,6 @@ impl LuaPush for LuaTable {
 
 impl LuaRead for LuaTable {
     fn lua_to_native(L: *mut lua_State, index: i32) -> Option<LuaTable> {
-        Some(LuaTable::newref(L, index))
+        Some(LuaTable::load(L, index))
     }
 }

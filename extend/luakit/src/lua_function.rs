@@ -87,16 +87,6 @@ macro_rules! lua_wrapper_function_impl {
     )
 }
 
-#[macro_export]
-macro_rules! lua_wrapper_obj_member_impl {
-    ($name:ident) => (
-        pub fn $name<Z, P, $p>(&mut self, $p: P) -> FuncWrapper<Z, $p, P> where P: LuaPush {
-            return FuncWrapper { function: || { return self.$p }, marker: PhantomData };
-        }
-    )
-}
-
-
 //get global function
 //-------------------------------------------------------------------------------
 pub fn get_global_function(L: *mut lua_State, func: *const char) -> bool {

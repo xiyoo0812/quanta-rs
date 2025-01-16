@@ -5,39 +5,14 @@ use lua::lua_State;
 use libc::c_int as int;
 use libc::c_char as char;
 
-use std::{ mem, ptr };
-
 use crate::lua_get_meta_name;
 use crate::lua_stack::{ LuaPush, LuaRead };
 
-pub struct MemberWrapper<F> {
-    pub getter: Option<F>,
-    pub setter: Option<F>,
-    pub is_function : bool,
-}
-
-impl<F> LuaPush for MemberWrapper<F> where F: LuaPush  {
-    fn native_to_lua(self, L: *mut lua_State) -> i32 {
-        unsafe {
-            let lua_data = lua::lua_newuserdata(L, mem::size_of::<Self>() as libc::size_t);
-            let lua_data: *mut F = std::mem::transmute(lua_data);
-            ptr::write(lua_data as *mut _, self);
-        }
-        1
-    }
-}
-
-#[macro_export]
-macro_rules! lua_wrapper_member_impl {
-    ($name:ident, $($p:ident),*) => (
-        pub fn $name<Z>(&mut self, mname: *const char, f: Z) where Z: LuaPush {
-            let wrapper = FuncWrapper { function: f, marker: PhantomData };
-            self.set(fname, wrapper);
-        }
-    )
-}
-
 pub fn lua_class_index<T>(L: *mut lua_State) -> int where T: LuaRead  {
+    let res = T::lua_to_native(L, 1);
+    if res.is_none() {
+        return 0;
+    }
     0
 }
 
@@ -53,7 +28,6 @@ pub fn lua_class_newindex<T>(L: *mut lua_State) -> int where T: LuaRead {
         lua::lua_pushstring(L, key.as_ptr() as *const char);
         lua::lua_rawget(L, -2);
     }
-
     0
 }
 
@@ -68,4 +42,38 @@ pub fn lua_class_gc<T>(L: *mut lua_State) -> int where T: LuaRead {
         None => {}
     }
     0
+}
+
+#[macro_export]
+macro_rules! new_class {
+    ($class:ty, $lua:expr, $name:expr$(,$key:expr, $member:expr)*) => ({
+        let L = $lua.L();
+        let _gl = luakit::LuaGuard::new(L);
+        let meta_name = luakit::lua_get_meta_name::<$class>();
+        lua::luaL_getmetatable(L, meta_name.as_ptr() as *const char);
+        if (lua::lua_isnil(L, -1)) {
+            lua::lua_pop(L, 1);
+            let meta = [
+                lua::lua_reg!("__gc", luakit::lua_class_gc::<$class>),
+                lua::lua_reg!("__index", luakit::lua_class_index::<$class>),
+                lua::lua_reg!("__newindex", luakit::lua_class_newindex::<$class>),
+                lua::lua_reg!(),
+            ];
+            unsafe { 
+                lua::luaL_newmetatable(L, meta_name.as_ptr() as *const char);
+                lua::luaL_setfuncs(L, meta.as_ptr(), 0);
+            }
+        }
+    })
+}
+
+#[macro_export]
+macro_rules! new_enum {
+    ($lua:expr, $name:expr, $($key:expr, $val:expr), +) => ({
+        let mut table = $lua.new_table(Some(cstr!($name)));
+        $(
+            table.set($key, $val);
+        )+
+        table
+    });
 }
