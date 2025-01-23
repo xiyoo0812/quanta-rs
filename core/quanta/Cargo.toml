@@ -12,5 +12,6 @@ edition = "2021"
 
 [dependencies]
 libc = "0.2.169"
+signal-hook  = "0.3.17"
 lua = { path = "../../extend/lua"}
 luakit = { path = "../../extend/luakit"}

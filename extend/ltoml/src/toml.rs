@@ -4,9 +4,9 @@
 extern crate toml;
 
 use libc::c_int as int;
-use lua::{ cstr,  ternary, lua_State };
-
 use toml::{ Value, Table };
+use lua::{ cstr, to_char, ternary, lua_State };
+use std::{fs::File, fs::OpenOptions, io::Read, io::Write};
 
 pub const MAX_ENCODE_DEPTH: u32     = 16;
 
@@ -101,11 +101,11 @@ pub unsafe fn decode_key(L: *mut lua_State, val: &String, numkeyable: bool) {
         let res = val.parse::<isize>();
         match res {
             Ok(val) => lua::lua_pushinteger(L, val),
-            Err(_) => lua::lua_pushlstring(L, val.as_ptr() as *const i8, val.len() as usize)
+            Err(_) => lua::lua_pushlstring(L, to_char!(val), val.len() as usize)
         }
         return
     }
-    lua::lua_pushlstring(L, val.as_ptr() as *const i8, val.len() as usize);
+    lua::lua_pushlstring(L, to_char!(val), val.len() as usize);
 }
 
 pub unsafe fn decode_object(L: *mut lua_State, val: &Table, numkeyable: bool) {
@@ -124,8 +124,8 @@ pub unsafe fn decode_one(L: *mut lua_State, value: &Value, numkeyable: bool) -> 
         Value::Integer(val) => lua::lua_pushinteger(L, *val as isize),
         Value::Array(val) => decode_array(L, val, numkeyable),
         Value::Table(val) => decode_object(L, val, numkeyable),
-        Value::Datetime(val) => lua::lua_pushstring(L, val.to_string().as_ptr() as *const i8),
-        Value::String(val) => lua::lua_pushlstring(L, val.as_ptr() as *const i8, val.len() as usize),
+        Value::Datetime(val) => lua::lua_pushstring(L, to_char!(val.to_string())),
+        Value::String(val) => lua::lua_pushlstring(L, to_char!(val), val.len() as usize),
     }
     return 1;
 }
@@ -150,9 +150,47 @@ pub fn encode(L: *mut lua_State) -> int {
         let val = encode_one(L, emy_as_arr, 1, 0);
         let x = toml::to_string(&val);
         match x {
-            Ok(x) => lua::lua_pushlstring(L, x.as_ptr() as *const i8, x.len() as usize),
+            Ok(x) => lua::lua_pushlstring(L, to_char!(x), x.len() as usize),
             Err(_) => lua::luaL_error(L, cstr!("encode can't pack too depth table")),
         }
         return 1;
+    }
+}
+
+pub fn open(L: *mut lua_State) -> int {
+    let filename = lua::lua_tolstring(L, 1).unwrap_or_default();
+    let res = File::open(filename);
+    match res {
+        Ok(mut f) => {
+            let mut toml = String::new();
+            match f.read_to_string(&mut toml) {
+                Ok(_) => { return decode_core(L, true, toml); },
+                Err(e) => lua::luaL_error(L, to_char!(e.to_string()))
+            };
+        },
+        Err(e) => lua::luaL_error(L, to_char!(e.to_string()))
+    }
+}
+
+pub fn save(L: *mut lua_State) -> int {
+    unsafe {
+        let filename = lua::lua_tolstring(L, 1).unwrap_or_default();
+        let res = OpenOptions::new().write(true).create(true).open(filename);
+        match res {
+            Ok(mut f) => {
+                let val = encode_one(L, true, 2, 0);
+                let eres  = toml::to_string(&val);
+                match eres {
+                    Ok(x) => {
+                        match f.write_all(x.as_bytes()) {
+                            Ok(_) => return 0,
+                            Err(e) => lua::luaL_error(L, to_char!(e.to_string()))
+                        };
+                    },
+                    Err(e) => lua::luaL_error(L, to_char!(e.to_string()))
+                }
+            },
+            Err(e) => lua::luaL_error(L, to_char!(e.to_string()))
+        }
     }
 }

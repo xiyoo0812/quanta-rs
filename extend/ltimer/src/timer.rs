@@ -7,6 +7,8 @@ use libc::c_int as int;
 use std::cell::RefCell;
 use std::collections::LinkedList;
 
+use luakit::LuaPush;
+
 const TIME_NEAR_SHIFT: usize    = 8;
 const TIME_LEVEL_SHIFT: usize   = 6;
 const TIME_NEAR: usize          = 1 << TIME_NEAR_SHIFT;
@@ -137,7 +139,7 @@ pub fn timer_update(L: *mut lua_State) -> int {
     return LUA_TIMER.with(|lua_timer| {
         let mut lua_timer = lua_timer.borrow_mut();
         let timers = lua_timer.update(escape);
-        return luakit::variadic_return1(L, timers);
+        luakit::variadic_return!(L, timers)
     });
 }
 

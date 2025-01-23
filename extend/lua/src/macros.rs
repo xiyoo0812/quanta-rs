@@ -9,6 +9,13 @@ macro_rules! cstr {
 }
 
 #[macro_export]
+macro_rules! to_char {
+    ($s:expr) => {
+        format!("{}\0", $s).as_ptr() as *const ::std::os::raw::c_char
+    };
+}
+
+#[macro_export]
 macro_rules! ternary {
     ($cond:expr, $true_expr:expr, $false_expr:expr) => {
         if $cond { $true_expr } else { $false_expr }

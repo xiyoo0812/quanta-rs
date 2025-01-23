@@ -14,7 +14,7 @@
             "request": "launch",
             "name": "(Windows) 启动",
             "program": "${workspaceFolder}/target/debug/quanta.exe",
-            "args": [],
+            "args": ["./configs/test.conf", "--index=1"],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}/bin/",
             "environment": [],

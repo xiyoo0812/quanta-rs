@@ -5,7 +5,7 @@ extern crate serde_json;
 
 use libc::c_int as int;
 
-use lua::{ cstr,  ternary, lua_State };
+use lua::{ cstr, to_char, ternary, lua_State };
 use serde_json::{ json, Map, Number, Value };
 
 pub const MAX_ENCODE_DEPTH: u32     = 16;
@@ -109,11 +109,11 @@ pub unsafe fn decode_key(L: *mut lua_State, val: &String, numkeyable: bool) {
         let res = val.parse::<isize>();
         match res {
             Ok(val) => lua::lua_pushinteger(L, val),
-            Err(_) => lua::lua_pushlstring(L, val.as_ptr() as *const i8, val.len() as usize)
+            Err(_) => lua::lua_pushlstring(L, to_char!(val), val.len() as usize)
         }
         return
     }
-    lua::lua_pushlstring(L, val.as_ptr() as *const i8, val.len() as usize);
+    lua::lua_pushlstring(L, to_char!(val), val.len() as usize);
 }
 
 pub unsafe fn decode_object(L: *mut lua_State, val: &Map<String, Value>, numkeyable: bool) {
@@ -132,7 +132,7 @@ pub unsafe fn decode_one(L: *mut lua_State, value: &Value, numkeyable: bool) -> 
         Value::Bool(val) => lua::lua_pushboolean(L, *val as i32),
         Value::Array(val) => decode_array(L, val, numkeyable),
         Value::Object(val) => decode_object(L, val, numkeyable),
-        Value::String(val) => lua::lua_pushlstring(L, val.as_ptr() as *const i8, val.len() as usize),
+        Value::String(val) => lua::lua_pushlstring(L, to_char!(val), val.len() as usize),
     }
     return 1;
 }
@@ -157,7 +157,7 @@ pub fn encode_impl(L: *mut lua_State) -> int {
         let val = encode_one(L, emy_as_arr, 1, 0);
         let x = serde_json::to_string(&val);
         match x {
-            Ok(x) => lua::lua_pushlstring(L, x.as_ptr() as *const i8, x.len() as usize),
+            Ok(x) => lua::lua_pushlstring(L, to_char!(x), x.len() as usize),
             Err(_) => lua::luaL_error(L, cstr!("encode can't pack too depth table")),
         }
         return 1;

@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
+use std::env;
 use lua::lua_State;
 use libc::c_int as int;
 
@@ -22,6 +23,19 @@ impl Drop for LuaGuard {
     }
 }
 
+pub fn get_platform() -> &'static str {
+    match env::consts::OS {
+        "macos" => "apple",
+        "windows" => "windows",
+        "linux" => "linux",
+        _ => "unknown",
+    }
+}
+
+pub fn lua_get_meta_name<T>() -> String {
+    format!("__lua_class_meta_{}__", std::any::type_name::<T>())
+}
+
 pub fn is_lua_array(L: *mut lua_State, idx: i32, emy_as_arr: bool) -> bool {
     if !lua::lua_istable(L, idx) {
         return false;
@@ -30,6 +44,7 @@ pub fn is_lua_array(L: *mut lua_State, idx: i32, emy_as_arr: bool) -> bool {
     if raw_len == 0 && !emy_as_arr {
         return false;
     }
+    let _gl = LuaGuard::new(L);
     let index = unsafe { lua::lua_absindex(L, idx) };
     unsafe { lua::lua_pushnil(L) };
     let mut curlen : isize = 0;

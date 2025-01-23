@@ -1,16 +1,58 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-use lua::lua_State;
 use libc::c_char as char;
+use libc::c_void as void;
+use lua::{cstr, to_char, lua_State};
+
+use std::thread::ThreadId;
 use std::collections::HashMap;
+
+use crate::lua_get_meta_name;
+use crate::lua_base::LuaGuard;
 
 pub trait LuaPush {
     fn native_to_lua(self, L: *mut lua_State) -> i32;
 }
 
+pub trait LuaPushFn {
+    fn native_to_lua(self, L: *mut lua_State) -> i32;
+}
+
+pub trait LuaPushFnMut {
+    fn native_to_lua(self, L: *mut lua_State) -> i32;
+}
+
+pub trait LuaPushLuaFn {
+    fn native_to_lua(self, L: *mut lua_State) -> i32;
+}
+
+pub trait LuaPushLuaFnMut {
+    fn native_to_lua(self, L: *mut lua_State) -> i32;
+}
+
 pub trait LuaRead: Sized {
     fn lua_to_native(L: *mut lua_State, index: i32) -> Option<Self>;
+}
+
+
+pub trait LuaGc {
+    fn __gc(&mut self) -> bool { true }
+}
+
+impl <T> LuaPush for Option<T> {
+    fn native_to_lua(self, L: *mut lua_State) -> i32 {
+        unsafe{
+            if !self.is_none() {
+                let tboxed: Box<T> = Box::new(self.unwrap());
+                let tptr: *mut T = Box::into_raw(tboxed);
+                lua_push_userdata(L, tptr)
+            } else {
+                lua::lua_pushnil(L);
+                1
+            }
+        }
+    }
 }
 
 impl LuaPush for lua::LuaNil {
@@ -45,11 +87,10 @@ impl LuaPush for *const char {
 
 impl LuaPush for String {
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
-        unsafe { lua::lua_pushlstring(L, self.as_ptr() as *const i8, self.len() as usize); };
+        unsafe { lua::lua_pushlstring(L, to_char!(self), self.len() as usize); };
         1
     }
 }
-
 
 impl LuaRead for String {
     fn lua_to_native(L: *mut lua_State, index: i32) -> Option<String> {
@@ -57,9 +98,17 @@ impl LuaRead for String {
     }
 }
 
+impl LuaPush for ThreadId {
+    //临时先这样，后面等ThreadId支持au_u64，再修改
+    fn native_to_lua(self, L: *mut lua_State) -> i32 {
+        unsafe { lua::lua_pushinteger(L, &self as *const ThreadId as isize); };
+        1
+    }
+}
+
 impl<'s> LuaPush for &'s str {
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
-        unsafe { lua::lua_pushlstring(L, self.as_ptr() as *const i8, self.len() as usize); };
+        unsafe { lua::lua_pushlstring(L, to_char!(self), self.len() as usize); };
         1
     }
 }
@@ -243,3 +292,62 @@ tuple_impl!(A, B, C, D, E, F, G, H, I, J);
 tuple_impl!(A, B, C, D, E, F, G, H, I, J, K);
 tuple_impl!(A, B, C, D, E, F, G, H, I, J, K, L);
 tuple_impl!(A, B, C, D, E, F, G, H, I, J, K, L, M);
+
+pub fn lua_load_userdata(L : *mut lua_State, index: i32) -> *mut void  {
+    unsafe {
+        if lua::lua_istable(L, index) {
+            let _gl = LuaGuard::new(L);
+            lua::lua_getfield(L, index, cstr!("__pointer__"));
+            if lua::lua_isnil(L, -1) {
+                return std::ptr::null_mut();
+            }
+            return lua::lua_touserdata(L, -1);
+        }
+        if lua::lua_isuserdata(L, index) {
+            return lua::lua_touserdata(L, index);
+        }
+        std::ptr::null_mut()
+    }
+}
+
+pub fn lua_push_userdata<T>(L : *mut lua_State, obj: *mut T) -> i32  {
+    unsafe {
+        //__objects__
+        lua::lua_getfield(L, lua::LUA_REGISTRYINDEX, cstr!("__objects__"));
+        if lua::lua_isnil(L, -1) {
+            lua::lua_pop(L, 1);
+            lua::lua_createtable(L, 0, 128);
+            lua::lua_createtable(L, 0, 4);
+            lua::lua_pushstring(L, cstr!("v"));
+            lua::lua_setfield(L, -2, cstr!("__mode"));
+            lua::lua_setmetatable(L, -2);
+            lua::lua_pushvalue(L, -1);
+            lua::lua_setfield(L, lua::LUA_REGISTRYINDEX, cstr!("__objects__"));
+        }
+        // stack: __objects__
+        let pkey = obj as isize;
+        if lua::lua_geti(L, -1, pkey) != lua::LUA_TTABLE {
+            lua::lua_pop(L, 1);
+            lua::lua_createtable(L, 0, 4);
+            lua::lua_pushlightuserdata(L, obj as *mut void);
+            lua::lua_setfield(L, -2, cstr!("__pointer__"));
+            // stack: __objects__, table
+            let meta_name = lua_get_meta_name::<T>();
+            lua::luaL_getmetatable(L, to_char!(meta_name));
+            if lua::lua_isnil(L, -1) {
+                lua::lua_pop(L, 3);
+                lua::lua_pushlightuserdata(L, obj as *mut void);
+                return 1;
+            }
+            // stack: __objects__, table, metatab
+            lua::lua_setmetatable(L, -2);
+            lua::lua_pushvalue(L, -1);
+            // stack: __objects__, table, table
+            lua::lua_seti(L, -3, pkey);
+        }
+        // stack: __objects__, table
+        lua::lua_remove(L, -2);
+        1
+    }
+}
+

@@ -2,17 +2,15 @@
 #![allow(dead_code)]
 
 use std::env;
-use std::marker::PhantomData;
 
-use libc::c_char as char;
-use lua::{ cstr, lua_State, lua_CFunction };
+use lua::{ cstr, to_char, lua_State, lua_CFunction };
 
 use crate::lua_stack::*;
 use crate::lua_function::*;
 use crate::lua_base::LuaGuard;
 use crate::lua_table::LuaTable;
 use crate::lua_reference::Reference;
-use crate::{ lua_wrapper_function_impl, lua_call_function_impl, table_call_function_impl };
+use crate::{ lua_set_function, call_table_warper, call_lua_warper, call_object_warper, call_function_inner };
 
 pub struct Luakit {
     m_L: *mut lua_State,
@@ -44,22 +42,22 @@ impl Luakit {
         return value.native_to_lua(self.m_L);
     }
 
-    pub fn set<V>(&mut self, key: *const char, value: V) where V: LuaPush {
+    pub fn set<V>(&mut self, key: &str, value: V) where V: LuaPush {
         value.native_to_lua(self.m_L);
-        unsafe { lua::lua_setglobal(self.m_L, key); }
+        unsafe { lua::lua_setglobal(self.m_L, to_char!(key)); }
     }
 
-    pub fn get<R>(&mut self, key: *const char) -> Option<R> where R: LuaRead {
-        let _ = LuaGuard::new(self.m_L);
-        unsafe { lua::lua_getglobal(self.m_L, key); }
+    pub fn get<R>(&mut self, key: &str) -> Option<R> where R: LuaRead {
+        let _gl = LuaGuard::new(self.m_L);
+        unsafe { lua::lua_getglobal(self.m_L, to_char!(key)); }
         return LuaRead::lua_to_native(self.m_L, -1);
     }
 
-    pub fn get_path(&mut self, field: *const char) -> String {
-        let _ = LuaGuard::new(self.m_L);
+    pub fn get_path(&mut self, field: &str) -> String {
+        let _gl = LuaGuard::new(self.m_L);
         unsafe {
             lua::lua_getglobal(self.m_L, cstr!("package"));
-            lua::lua_getfield(self.m_L, -1, field);
+            lua::lua_getfield(self.m_L, -1, to_char!(field));
             lua::lua_tostring(self.m_L, -1).unwrap()
         }
     }
@@ -73,7 +71,7 @@ impl Luakit {
     }
 
     pub fn set_searchers(&mut self, f : lua_CFunction) {
-        let _ = LuaGuard::new(self.m_L);
+        let _gl = LuaGuard::new(self.m_L);
         unsafe {
             lua::lua_getglobal(self.m_L, cstr!("package"));
             lua::lua_getfield(self.m_L, -1, cstr!("searchers"));
@@ -82,29 +80,28 @@ impl Luakit {
         }
     }
 
-    pub fn set_function(&mut self, name: *const char, f : lua_CFunction) {
-        let _ = LuaGuard::new(self.m_L);
+    pub fn set_function(&mut self, name: &str, f : lua_CFunction) {
+        let _gl = LuaGuard::new(self.m_L);
         unsafe {
             lua::lua_pushcfunction(self.m_L, f);
-            lua::lua_setglobal(self.m_L, name);
+            lua::lua_setglobal(self.m_L, to_char!(name));
         }
     }
 
-    pub fn new_table(&mut self, name: Option<*const char>) -> LuaTable {
-        let _ = LuaGuard::new(self.m_L);
-        unsafe { 
+    pub fn new_table(&mut self, name: Option<&str>) -> LuaTable {
+        unsafe {
             lua::lua_createtable(self.m_L, 0, 8);
             if !name.is_none() {
                 lua::lua_pushvalue(self.m_L, -1);
-                lua::lua_setglobal(self.m_L, name.unwrap());
+                lua::lua_setglobal(self.m_L, to_char!(name.unwrap()));
             }
             LuaTable::new(self.m_L)
         }
     }
-    
-    pub fn run_file(&mut self, file: *const char) ->Result<bool, String> {
-        let _ = LuaGuard::new(self.m_L);
-        if lua::luaL_loadfile(self.m_L, file) == 1 {
+
+    pub fn run_file(&mut self, file: &String) ->Result<bool, String> {
+        let _gl = LuaGuard::new(self.m_L);
+        if lua::luaL_loadfile(self.m_L, to_char!(file)) != 0 {
             let err= lua::lua_tostring(self.m_L, -1).unwrap();
             print!("lua loadfile err: {}", err);
             return Err(err);
@@ -112,19 +109,19 @@ impl Luakit {
         return lua_call_function(self.m_L, 0, 0);
     }
 
-    pub fn run_script(&mut self, script: *const char) ->Result<bool, String> {
-        let _ = LuaGuard::new(self.m_L);
+    pub fn run_script(&mut self, script: String) ->Result<bool, String> {
+        let _gl = LuaGuard::new(self.m_L);
         unsafe {
-            if lua::luaL_loadstring(self.m_L, script) == 1 {
+            if lua::luaL_loadstring(self.m_L, to_char!(script)) != 0 {
                 let err= lua::lua_tostring(self.m_L, -1).unwrap();
-                print!("lua loadstring err: {}", err);
+                println!("lua loadstring err: {}", err);
                 return Err(err);
             }
         }
         return lua_call_function(self.m_L, 0, 0);
     }
 
-    pub fn get_function(&mut self, function: *const char) -> bool {
+    pub fn get_function(&mut self, function: &str) -> bool {
         return get_global_function(self.m_L, function);
     }
 
@@ -132,49 +129,17 @@ impl Luakit {
         return lua_call_function(self.m_L, 0, 0);
     }
 
-    pub fn call_global(&mut self, func: *const char) ->Result<bool, String> {
+    pub fn call(&mut self, func: &str) ->Result<bool, String> {
         return call_global_function(self.m_L, func, 0, 0);
     }
-    
-    lua_call_function_impl!(call, );
-    lua_call_function_impl!(call1, A);
-    lua_call_function_impl!(call2, A, B);
-    lua_call_function_impl!(call3, A, B, C);
-    lua_call_function_impl!(call4, A, B, C, D);
-    lua_call_function_impl!(call5, A, B, C, D, E);
-    lua_call_function_impl!(call6, A, B, C, D, E, F);
-    lua_call_function_impl!(call7, A, B, C, D, E, F, G);
-    lua_call_function_impl!(call8, A, B, C, D, E, F, G, H);
-    lua_call_function_impl!(call9, A, B, C, D, E, F, G, H, I);
-    lua_call_function_impl!(call10, A, B, C, D, E, F, G, H, I, J);
 
-    table_call_function_impl!(table_call, );
-    table_call_function_impl!(table_call1, A);
-    table_call_function_impl!(table_call2, A, B);
-    table_call_function_impl!(table_call3, A, B, C);
-    table_call_function_impl!(table_call4, A, B, C, D);
-    table_call_function_impl!(table_call5, A, B, C, D, E);
-    table_call_function_impl!(table_call6, A, B, C, D, E, F);
-    table_call_function_impl!(table_call7, A, B, C, D, E, F, G);
-    table_call_function_impl!(table_call8, A, B, C, D, E, F, G, H);
-    table_call_function_impl!(table_call9, A, B, C, D, E, F, G, H, I);
-    table_call_function_impl!(table_call10, A, B, C, D, E, F, G, H, I, J);
-
-    lua_wrapper_function_impl!(bind_function,);
-    lua_wrapper_function_impl!(bind_function1, A);
-    lua_wrapper_function_impl!(bind_function2, A, B);
-    lua_wrapper_function_impl!(bind_function3, A, B, C);
-    lua_wrapper_function_impl!(bind_function4, A, B, C, D);
-    lua_wrapper_function_impl!(bind_function5, A, B, C, D, E);
-    lua_wrapper_function_impl!(bind_function6, A, B, C, D, E, F);
-    lua_wrapper_function_impl!(bind_function7, A, B, C, D, E, F, G);
-    lua_wrapper_function_impl!(bind_function8, A, B, C, D, E, F, G, H);
-    lua_wrapper_function_impl!(bind_function9, A, B, C, D, E, F, G, H, I);
-    lua_wrapper_function_impl!(bind_function10, A, B, C, D, E, F, G, H, I, J);
+    pub fn table_call(&mut self, table: &str, func: &str) ->Result<bool, String> {
+        return call_table_function(self.m_L, table, func, 0, 0);
+    }
 
     fn set_lua_path(&mut self, fieldname: &str, path: &str) {
         let mut buffer = String::new();
-        let mut package = self.get::<LuaTable>(cstr!("package")).unwrap();
+        let mut package = self.get::<LuaTable>("package").unwrap();
         let res = path.find(";;");
         if !res.is_none() {
             let dftmark = res.unwrap();
@@ -200,4 +165,53 @@ impl Luakit {
         }
         package.set(fieldname, buffer);
     }
+
+    call_lua_warper!(call0, );
+    call_lua_warper!(call1, A);
+    call_lua_warper!(call2, A, B);
+    call_lua_warper!(call3, A, B, C);
+    call_lua_warper!(call4, A, B, C, D);
+    call_lua_warper!(call5, A, B, C, D, E);
+    call_lua_warper!(call6, A, B, C, D, E, F);
+    call_lua_warper!(call7, A, B, C, D, E, F, G);
+    call_lua_warper!(call8, A, B, C, D, E, F, G, H);
+    call_lua_warper!(call9, A, B, C, D, E, F, G, H, I);
+    call_lua_warper!(call10, A, B, C, D, E, F, G, H, I, J);
+    
+    lua_set_function!(set_function0,);
+    lua_set_function!(set_function1, A);
+    lua_set_function!(set_function2, A, B);
+    lua_set_function!(set_function3, A, B, C);
+    lua_set_function!(set_function4, A, B, C, D);
+    lua_set_function!(set_function5, A, B, C, D, E);
+    lua_set_function!(set_function6, A, B, C, D, E, F);
+    lua_set_function!(set_function7, A, B, C, D, E, F, G);
+    lua_set_function!(set_function8, A, B, C, D, E, F, G, H);
+    lua_set_function!(set_function9, A, B, C, D, E, F, G, H, I);
+    lua_set_function!(set_function10, A, B, C, D, E, F, G, H, I, J);
+
+    call_table_warper!(table_call0, );
+    call_table_warper!(table_call1, A);
+    call_table_warper!(table_call2, A, B);
+    call_table_warper!(table_call3, A, B, C);
+    call_table_warper!(table_call4, A, B, C, D);
+    call_table_warper!(table_call5, A, B, C, D, E);
+    call_table_warper!(table_call6, A, B, C, D, E, F);
+    call_table_warper!(table_call7, A, B, C, D, E, F, G);
+    call_table_warper!(table_call8, A, B, C, D, E, F, G, H);
+    call_table_warper!(table_call9, A, B, C, D, E, F, G, H, I);
+    call_table_warper!(table_call10, A, B, C, D, E, F, G, H, I, J);
+    
+    call_object_warper!(object_call0, );
+    call_object_warper!(object_call1, A);
+    call_object_warper!(object_call2, A, B);
+    call_object_warper!(object_call3, A, B, C);
+    call_object_warper!(object_call4, A, B, C, D);
+    call_object_warper!(object_call5, A, B, C, D, E);
+    call_object_warper!(object_call6, A, B, C, D, E, F);
+    call_object_warper!(object_call7, A, B, C, D, E, F, G);
+    call_object_warper!(object_call8, A, B, C, D, E, F, G, H);
+    call_object_warper!(object_call9, A, B, C, D, E, F, G, H, I);
+    call_object_warper!(object_call10, A, B, C, D, E, F, G, H, I, J);
+
 }
