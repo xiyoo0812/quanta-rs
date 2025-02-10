@@ -16,8 +16,8 @@ local lhmac_sha256  = ssl.hmac_sha256
 local lhmac_sha512  = ssl.hmac_sha512
 
 --base64
-local ran = lrandomkey()
-log_info("lrandomkey-> ran: {}", lhex_encode(ran))
+local ran = lrandomkey(12, true)
+log_info("lrandomkey-> ran: {}", ran)
 local text = "aTmEiujIXS9aezbfaADYGd5fFr2ExUPvw9t0Pijxjw8WMCQQDDsGLBH4RTQwPe"
 local nonce = lb64encode(text)
 local dnonce = lb64decode(nonce)
@@ -34,11 +34,11 @@ log_info("sha512: {}", sha512)
 
 --md5
 local omd5 = lmd5(value)
-local nmd5 = lmd5(value, 1)
+local nmd5 = lmd5(value, true)
 local hmd5 = lhex_encode(omd5)
-log_info("md5: {}", nmd5)
-log_info("omd5: {}, hmd5: {}", omd5, hmd5)
+log_info("omd5: {}, hmd5: {}", nmd5, hmd5)
 
+--[[
 --hmac_sha
 local key = "1235456"
 local hmac_sha1 = lhex_encode(lhmac_sha1(key, value))
@@ -55,7 +55,7 @@ HbG8SyyAiHZ5gMMMoBGayBGgOCGXHDRDUabr0E8xFtSApu9Ppuj3frzwRDcj4Q69
 yXc/x1+a18Jt96DI/DJEkmkmo/Mr+pmY4mVFk4a7pxnXpynBUz7E7vp9/XvMs84L
 DFqqvGiSmW/YKJfsAQIDAQAB
 ]]
-
+--[[
 local pem_pri = [[
 MIICWwIBAAKBgQCWKUc5BTsvNKLv389mqShFhg7lHbG8SyyAiHZ5gMMMoBGayBGg
 OCGXHDRDUabr0E8xFtSApu9Ppuj3frzwRDcj4Q69yXc/x1+a18Jt96DI/DJEkmkm
@@ -71,7 +71,7 @@ nPIvX+ZBsec6WRWd/5bq/09L/JhR9GGnFE6WjUsRHDLHDH+cKfIF+Bya93+2wwJX
 +tW72Sp/Rc/xwU99bwJAfUw9Nfv8llVA2ZCHkHGNc70BjTyaT/TxLV6jcouDYMTW
 RfSHi27F/Ew6pENe4AwY2sfEV2TXrwEdrvfjNWFSPw==
 ]]
-
+--[[
 local pubkey = ssl.rsa_init_pubkey(pem_pub)
 local prikey = ssl.rsa_init_prikey(pem_pri)
 log_info("rsa_init: {}, {}",  pubkey, prikey)
@@ -124,3 +124,4 @@ for i = 1, 20000 do
     ssl.lz4_decode(lz4c)
 end
 log_info("lz4_decode: {}=>{}",  #lz4d, timer.now_ms() - s2)
+]]

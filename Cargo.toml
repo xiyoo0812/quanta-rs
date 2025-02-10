@@ -10,6 +10,7 @@ members = [
     "extend/lcodec",
     "extend/lstdfs",
     "extend/ltimer",
+    "extend/lssl",
     "core/quanta",
 ]
 
