@@ -1,8 +1,9 @@
 [workspace]
-resolver = "2"
+resolver = "1"
 members = [
     "extend/lua",
     "extend/luakit",
+    "extend/lualog",
     "extend/ljson",
     "extend/ltoml",
     "extend/lyaml",

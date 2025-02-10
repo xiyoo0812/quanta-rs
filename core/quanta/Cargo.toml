@@ -2,6 +2,7 @@
 name = "quanta"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"  # 关键配置：启用构建脚本
 
 #authors = ["xiyoo0812"]
 #description = "Bindings for Lua 5.4"

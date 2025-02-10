@@ -5,11 +5,11 @@ pre-build:
     mkdir -p bin
 
 build:
-    cargo build
+    cargo build --jobs 3
 
 clean:
     cargo clean
 
 post-build:
-    cp -f target/debug/deps/*.so bin
-    cp -f target/debug/deps/quanta bin
+    cp -f target/debug/*.so bin
+    cp -f target/debug/quanta bin

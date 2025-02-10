@@ -6,22 +6,18 @@ extern crate luakit;
 
 mod toml;
 
+use lua::lua_State;
 use libc::c_int as int;
-use lua::{ cstr, lua_reg, lua_State };
-use toml::{ encode, decode, open, save };
+
+use luakit::{ Luakit, LuaPush };
 
 #[no_mangle]
 pub extern "C" fn luaopen_ltoml(L: *mut lua_State) -> int {
-    let LFUNS = [
-        lua_reg!("open", open),
-        lua_reg!("save", save),
-        lua_reg!("encode", encode),
-        lua_reg!("decode", decode),
-        lua_reg!(),
-    ];
-    unsafe {
-        lua::lua_createtable(L, LFUNS.len() as i32, 0);
-        lua::luaL_setfuncs(L, LFUNS.as_ptr(), 0);
-        return 1;
-    }
+    let mut kit = Luakit::load(L);
+    let mut ltoml = kit.new_table(Some("toml"));
+    ltoml.set_function("open", toml::open);
+    ltoml.set_function("save", toml::save);
+    ltoml.set_function("encode", toml::encode);
+    ltoml.set_function("decode", toml::decode);
+    ltoml.native_to_lua(L)
 }

@@ -1,34 +1,32 @@
 --sandbox.lua
---require("lualog")
+require("lualog")
 require("lstdfs")
 require("ltimer")
 
 local pairs         = pairs
 local loadfile      = loadfile
 local mabs          = math.abs
---local lprint        = log.print
+local lprint        = log.print
 local sgsub         = string.gsub
 local sformat       = string.format
---local qgetenv       = quanta.getenv
+local qgetenv       = quanta.getenv
 local traceback     = debug.traceback
 local file_time     = stdfs.last_write_time
 local fexists       = stdfs.exists
 
---local LOG_LEVEL     = log.LOG_LEVEL
+local LOG_LEVEL     = log.LOG_LEVEL
 
---local FEATURE       = "devops"
---local THREAD_NAME   = quanta.thread
+local FEATURE       = "devops"
+local THREAD_NAME   = quanta.thread
 
 local load_status = "success"
 local log_error = function(content)
     load_status = "failed"
-    print(content)
-    --lprint(LOG_LEVEL.ERROR, 0, THREAD_NAME, FEATURE, content)
+    lprint(LOG_LEVEL.ERROR, 0, THREAD_NAME, FEATURE, content)
 end
 
 local log_output = function(content)
-    --lprint(LOG_LEVEL.INFO, 0, THREAD_NAME, FEATURE, content)
-    print(content)
+    lprint(LOG_LEVEL.INFO, 0, THREAD_NAME, FEATURE, content)
 end
 
 local function ssplit(str, token)
@@ -46,11 +44,10 @@ local function ssplit(str, token)
     return t
 end
 
-
 --加载部署日志
---if qgetenv("QUANTA_LOG_PATH") then
-    --log.add_file_dest(FEATURE, "devops.log")
---end
+if qgetenv("QUANTA_LOG_PATH") then
+    log.add_file_dest(FEATURE, "devops.log")
+end
 
 --加载lua文件搜索路径
 local load_files    = {}

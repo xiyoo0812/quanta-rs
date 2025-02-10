@@ -6,22 +6,18 @@ extern crate luakit;
 
 mod yaml;
 
+use lua::lua_State;
 use libc::c_int as int;
-use lua::{ cstr, lua_reg, lua_State };
-use yaml::{ encode, decode, open, save };
+
+use luakit::{ Luakit, LuaPush };
 
 #[no_mangle]
 pub extern "C" fn luaopen_lyaml(L: *mut lua_State) -> int {
-    let LFUNS = [
-        lua_reg!("open", open),
-        lua_reg!("save", save),
-        lua_reg!("encode", encode),
-        lua_reg!("decode", decode),
-        lua_reg!(),
-    ];
-    unsafe {
-        lua::lua_createtable(L, LFUNS.len() as i32, 0);
-        lua::luaL_setfuncs(L, LFUNS.as_ptr(), 0);
-        return 1;
-    }
+    let mut kit = Luakit::load(L);
+    let mut lyaml = kit.new_table(Some("yaml"));
+    lyaml.set_function("open", yaml::open);
+    lyaml.set_function("save", yaml::save);
+    lyaml.set_function("encode", yaml::encode);
+    lyaml.set_function("decode", yaml::decode);
+    lyaml.native_to_lua(L)
 }

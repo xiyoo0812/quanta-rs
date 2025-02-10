@@ -48,5 +48,5 @@ pub extern "C" fn luaopen_lstdfs(L: *mut lua_State) -> int {
     stdfs.set_function("remove_filename", lstdfs_remove_filename);
     stdfs.set_function("replace_filename", lstdfs_replace_filename);
     stdfs.set_function("replace_extension", lstdfs_replace_extension);
-    return stdfs.native_to_lua(L);
+    stdfs.native_to_lua(L)
 }

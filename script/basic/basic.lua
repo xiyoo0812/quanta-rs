@@ -13,7 +13,7 @@ import("basic/time.lua")
 import("basic/table.lua")
 import("basic/string.lua")
 import("basic/logger.lua")
-import("basic/profile.lua")
+--import("basic/profile.lua")
 import("basic/signal.lua")
 import("basic/environ.lua")
 import("basic/console.lua")
@@ -82,7 +82,7 @@ function quanta.get(name)
     local global_obj = quanta[name]
     if not global_obj then
         local info = dgetinfo(2, "S")
-        log_err("[quanta][get] {} not initial! source({}:{})", name, info.short_src, info.linedefined)
+        print("[quanta][get] {} not initial! source({}:{})", name, info.short_src, info.linedefined)
         return
     end
     return global_obj

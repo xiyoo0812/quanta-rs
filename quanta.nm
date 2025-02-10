@@ -5,11 +5,11 @@ pre-build:
     mkdir -p bin
 
 build:
-    cargo build
+    cargo build --jobs 3
 
 clean:
     cargo clean
 
 post-build:
-    xcopy target\debug\deps\*.dll bin /y /s
-    copy target\debug\deps\quanta.exe bin
+    xcopy target\debug\*.dll bin /y
+    copy target\debug\quanta.exe bin

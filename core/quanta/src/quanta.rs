@@ -7,10 +7,18 @@ use std::sync::Arc;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use lua::to_char;
 use signal_hook::flag;
+use libc::c_char as char;
 
 use luakit::Luakit;
 use crate::test::luakit_test;
+
+extern "C" {
+    fn init_logger();
+    fn stop_logger();
+    fn option_logger(path: *const char, service: *const char, index: *const char);
+}
 
 pub struct Quanta {
     m_lua: Luakit,
@@ -49,7 +57,7 @@ impl Quanta {
     }
 
     pub fn set_env(&mut self, key: &str, val: &str, over : bool) {
-        if over && !self.m_environs.contains_key(key) {
+        if over || !self.m_environs.contains_key(key) {
             self.m_environs.insert(key.to_string(), val.to_string());
         }
     }
@@ -81,6 +89,13 @@ impl Quanta {
     }
 
     pub fn setup(&mut self, argv: Vec<String>) ->bool {
+        //初始化日志
+        unsafe { init_logger() };
+        //加载配置
+        self.load(argv)
+    }
+        
+    pub fn load(&mut self, argv: Vec<String>) ->bool {
         //声明函数
         let mut global = self.m_lua.get::<luakit::LuaTable>("_G").unwrap();
         self.m_lua.set("platform", luakit::get_platform());
@@ -135,15 +150,11 @@ impl Quanta {
         luakit::set_function!(quanta, "register_signal", | n : i32 | {
             let signal = Arc::new(AtomicBool::new(false));
             match flag::register(n, Arc::clone(&signal)) {
-                Ok(_) => {
-                    self.m_signals.insert(n, Arc::clone(&signal));
-                },
-                Err(e) => {
-                    println!("register signal Error: {}", e);
-                }
+                Ok(_) => { self.m_signals.insert(n, signal.clone()); },
+                Err(e) => { println!("register signal {} error: {}", n, e); },
             };
         });
-        luakit::set_function!(quanta, "get_singal", || {
+        luakit::set_function!(quanta, "get_signal", || {
             let mut signal_mask = self.m_signal;
             for (n, signal) in self.m_signals.iter() {
                 if signal.load(Ordering::Relaxed) {
@@ -154,11 +165,11 @@ impl Quanta {
         });
 
         //设置日志
-        let env_log_path = self.get_env("QUANTA_LOG_PATH");
-        if !env_log_path.is_empty() {
-            let _env_index = self.get_env("QUANTA_INDEX");
-            let _env_service = self.get_env("QUANTA_SERVICE");
-            //logger::get_logger()->option(env_log_path, env_service, env_index);
+        let log_path = self.get_env("QUANTA_LOG_PATH");
+        if !log_path.is_empty() {
+            let index = self.get_env("QUANTA_INDEX");
+            let service = self.get_env("QUANTA_SERVICE");
+            unsafe { option_logger(to_char!(log_path), to_char!(service), to_char!(index)) };
         }
         //加载sandbox和entry
         let sandbox = self.get_env("QUANTA_SANDBOX");
@@ -170,14 +181,14 @@ impl Quanta {
         match self.m_lua.run_script(format!("require '{}'\0", sandbox)) {
             Ok(_) => {},
             Err(e) => {
-                println!("run sandbox Error: {}", e);
+                println!("require sandbox Error: {}", e);
                 return false;
             }
         }
         match self.m_lua.run_script(format!("require '{}'\0", entry)) {
             Ok(_) => {},
             Err(e) => {
-                println!("run entry Error: {}", e);
+                println!("require entry {} error: {}", entry, e);
                 return false;
             }
         }
@@ -187,15 +198,10 @@ impl Quanta {
     pub fn run(&mut self) {
         if self.init() {
             luakit_test(&mut self.m_lua);
+            let mut quanta = self.m_lua.get::<luakit::LuaTable>("quanta").unwrap();
             //主循环
-            while self.m_lua.get_function("run") {
-                match self.m_lua.call_function(){
-                    Ok(_) => {},
-                    Err(e) => {
-                        println!("Error: {}", e);
-                        break;
-                    }
-                }
+            while quanta.get_function("run") {
+                let _ = quanta.call_function();
             }
         }
     }    

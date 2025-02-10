@@ -5,7 +5,7 @@ extern crate serde_json;
 
 use libc::c_int as int;
 
-use lua::{ cstr, to_char, ternary, lua_State };
+use lua::{ cstr, to_char, lua_State };
 use serde_json::{ json, Map, Number, Value };
 
 pub const MAX_ENCODE_DEPTH: u32     = 16;
@@ -72,7 +72,7 @@ pub unsafe fn encode_one(L: *mut lua_State, emy_as_arr: bool, idx: i32, depth: u
         lua::LUA_TNUMBER => return encode_number(L, idx),
         lua::LUA_TTABLE => return encode_table(L, emy_as_arr, idx, depth + 1),
         lua::LUA_TBOOLEAN => {
-            let val = ternary!(lua::lua_toboolean(L, idx), true, false);
+            let val = lua::lua_toboolean(L, idx);
             return json!(val);
         }
         lua::LUA_TSTRING=> {

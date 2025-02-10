@@ -21,3 +21,5 @@ Cargo.lock
 #.idea/
 *.exe
 *.dll
+*.lib
+*.log

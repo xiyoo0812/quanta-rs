@@ -127,8 +127,7 @@ thread_local! {
 pub fn timer_insert(L: *mut lua_State) -> int {
     let timer_id = lua::lua_tointeger(L, 1) as u64;
     let escape = lua::lua_tointeger(L, 2) as usize;
-    LUA_TIMER.with(|lua_timer| {
-        let mut lua_timer = lua_timer.borrow_mut();
+    LUA_TIMER.with_borrow_mut(|lua_timer: &mut LuaTimer| {
         lua_timer.insert(timer_id, escape);
     });
     return 0;
@@ -136,13 +135,11 @@ pub fn timer_insert(L: *mut lua_State) -> int {
 
 pub fn timer_update(L: *mut lua_State) -> int {
     let escape = lua::lua_tointeger(L, 1) as usize;
-    return LUA_TIMER.with(|lua_timer| {
-        let mut lua_timer = lua_timer.borrow_mut();
+    return LUA_TIMER.with_borrow_mut(|lua_timer| {
         let timers = lua_timer.update(escape);
         luakit::variadic_return!(L, timers)
     });
 }
-
 
 pub fn timer_sleep(L: *mut lua_State) -> int {
     let ms = lua::lua_tointeger(L, 1) as u64;

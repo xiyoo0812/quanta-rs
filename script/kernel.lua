@@ -18,11 +18,11 @@ local THREAD_MASTER = quanta.master
 --初始化基础库
 local function init_library()
     --加载扩展库
-    require("lssl")
-    require("luapb")
     require("ljson")
-    require("lbson")
-    require("lcodec")
+    -- require("lssl")
+    -- require("luapb")
+    -- require("lbson")
+    -- require("lcodec")
     --加载基础库
     import("kernel/thread_mgr.lua")
     import("kernel/event_mgr.lua")
@@ -54,12 +54,12 @@ local function init_mainloop()
         signal.init()
         logger.init()
         if environ.status("QUANTA_THREAD") then
-            require("lworker")
-            import("feature/scheduler.lua")
+            -- require("lworker")
+            -- import("feature/scheduler.lua")
         end
     else
         --子线程
-        import("feature/worker.lua")
+        -- import("feature/worker.lua")
     end
 end
 
@@ -90,11 +90,11 @@ function quanta.main()
     --主循环
     init_mainloop()
     --网络
-    init_network()
+    -- init_network()
     --加载服务发现
-    init_discover()
+    -- init_discover()
     --初始化store
-    init_store()
+    -- init_store()
 end
 
 --启动
@@ -116,15 +116,16 @@ end
 quanta.run = function()
     qxpcall(function()
         local sclock_ms = lclock_ms()
-        socket_mgr.wait(sclock_ms, 10)
+        -- socket_mgr.wait(sclock_ms, 10)
         --系统更新
         local now_ms, clock_ms = ltime()
         update_mgr:update(now_ms, clock_ms, THREAD_MASTER)
+        timer.sleep(10)
         --时间告警
         local io_ms = clock_ms - sclock_ms
         local work_ms = lclock_ms() - sclock_ms
         if work_ms > HALF_MS or io_ms > SLOW_MS then
-            log_warn("[{}][run] last frame too long => all:{}, net:{})!", THREAD_NAME, work_ms, io_ms)
+             log_warn("[{}][run] last frame too long => all:{}, net:{})!", THREAD_NAME, work_ms, io_ms)
         end
     end, "quanta run err: {}")
 end

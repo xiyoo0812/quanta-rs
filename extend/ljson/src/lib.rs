@@ -6,20 +6,16 @@ extern crate luakit;
 
 mod json;
 
+use lua::lua_State;
 use libc::c_int as int;
-use json::{ encode_impl, decode_impl };
-use lua::{ cstr, lua_reg, lua_State };
+
+use luakit::{ Luakit, LuaPush };
 
 #[no_mangle]
 pub extern "C" fn luaopen_ljson(L: *mut lua_State) -> int {
-    let LFUNS = [
-        lua_reg!("encode", encode_impl),
-        lua_reg!("decode", decode_impl),
-        lua_reg!(),
-    ];
-    unsafe {
-        lua::lua_createtable(L, LFUNS.len() as i32, 0);
-        lua::luaL_setfuncs(L, LFUNS.as_ptr(), 0);
-        return 1;
-    }
+    let mut kit = Luakit::load(L);
+    let mut ljson = kit.new_table(Some("json"));
+    ljson.set_function("encode", json::encode_impl);
+    ljson.set_function("decode", json::decode_impl);
+    ljson.native_to_lua(L)
 }

@@ -13,7 +13,7 @@ use crate::lua_reference::Reference;
 use crate::{ lua_set_function, call_table_warper, call_lua_warper, call_object_warper, call_function_inner };
 
 pub struct Luakit {
-    m_L: *mut lua_State,
+    m_L: *mut lua_State
 }
 
 impl Luakit {

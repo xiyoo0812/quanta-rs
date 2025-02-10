@@ -337,7 +337,7 @@ pub fn lua_pushglobaltable(L: *mut lua_State) {
     unsafe { lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS); }
 }
 
-pub fn lua_from_cstr(s: *const char) -> Option<String> {
+pub fn from_cstr(s: *const char) -> Option<String> {
     let res = unsafe { CStr::from_ptr(s).to_str() };
     match res {
         Ok(x) => Some(x.to_string()),
@@ -345,7 +345,7 @@ pub fn lua_from_cstr(s: *const char) -> Option<String> {
     }
 }
 
-pub fn lua_from_cstrlen(s: *const char, l: size_t) -> Option<String> {
+pub fn from_cstrlen(s: *const char, l: size_t) -> Option<String> {
     let bytes = unsafe { std::slice::from_raw_parts(s as *const u8, l) };
     match std::str::from_utf8(bytes) {
         Ok(v) => Some(v.to_string()),
@@ -359,35 +359,35 @@ pub fn lua_toboolean(L: *mut lua_State, i: int) -> bool {
 
 pub fn lua_tostring(L: *mut lua_State, i: int) -> Option<String> {
     let cstr = unsafe { lua_tolstring_(L, i, ptr::null_mut()) };
-    lua_from_cstr(cstr)
+    from_cstr(cstr)
 }
 
 pub fn lua_tolstring(L: *mut lua_State, i: int) -> Option<String> {
     let mut size: size_t = 0;
     let cstr = unsafe { lua_tolstring_(L, i, &mut size) };
-    lua_from_cstrlen(cstr, size)
+    from_cstrlen(cstr, size)
 }
 
 pub fn luaL_checkstring(L: *mut lua_State, i: int) -> Option<String> {
     let cstr = unsafe { luaL_checklstring_(L, i, ptr::null_mut()) };
-    lua_from_cstr(cstr)
+    from_cstr(cstr)
 }
 
 pub fn luaL_checklstring(L: *mut lua_State, i: int) -> Option<String> {
     let mut size: size_t = 0;
     let cstr = unsafe { luaL_checklstring_(L, i, &mut size) };
-    lua_from_cstrlen(cstr, size)
+    from_cstrlen(cstr, size)
 }
 
 pub fn luaL_optstring(L: *mut lua_State, i: int, def: *const char) -> String {
     let cstr = unsafe { luaL_optlstring_(L, i, def, ptr::null_mut()) };
-    lua_from_cstr(cstr).unwrap()
+    from_cstr(cstr).unwrap()
 }
 
 pub fn luaL_optlstring(L: *mut lua_State, i: int, def: *const char) -> String {
     let mut size: size_t = 0;
     let cstr = unsafe { luaL_optlstring_(L, i, def, &mut size) };
-    lua_from_cstrlen(cstr, size).unwrap()
+    from_cstrlen(cstr, size).unwrap()
 }
 
 pub fn lua_tonumber(L: *mut lua_State, i: int) -> lua_Number {
