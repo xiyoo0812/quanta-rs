@@ -19,10 +19,10 @@ local THREAD_MASTER = quanta.master
 local function init_library()
     --加载扩展库
     require("ljson")
+    require("lcodec")
     -- require("lssl")
     -- require("luapb")
     -- require("lbson")
-    -- require("lcodec")
     --加载基础库
     import("kernel/thread_mgr.lua")
     import("kernel/event_mgr.lua")

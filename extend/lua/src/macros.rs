@@ -32,7 +32,7 @@ macro_rules! lua_reg {
     };
     ($name:expr, $func:expr) => {
         lua::luaL_Reg {
-            name: cstr!($name),
+            name: lua::cstr!($name),
             func: $func,
         }
     };

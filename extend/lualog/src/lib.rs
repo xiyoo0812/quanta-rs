@@ -16,16 +16,15 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use dyn_fmt::Arguments;
 use once_cell::sync::Lazy;
-use lua::{ from_cstr, lua_State };
-use luakit::{ Luakit, LuaRead, LuaPush };
+use lua::{ from_cstr, ternary, lua_State };
 use logger::{ LogLevel, RollingType, LogService };
+use luakit::{ Luakit, LuaRead, LuaPush, LuaPushFn };
 
 const LOG_FLAG_FORMAT: i32 = 1;
 const LOG_FLAG_PRETTY: i32 = 2;
 const LOG_FLAG_MONITOR: i32 = 4;
 
 static S_LOGGER: Lazy<Arc<Mutex<LogService>>> = Lazy::new(|| {
-    println!("S_LOGGER");
     Arc::new(Mutex::new(LogService::new()))
 });
 
@@ -36,6 +35,7 @@ fn read_args(L: *mut lua_State, flag: int, index: int) -> String {
         lua::LUA_TTHREAD => "thread".to_string(),
         lua::LUA_TFUNCTION => "function".to_string(),
         lua::LUA_TUSERDATA | lua::LUA_TLIGHTUSERDATA => "userdata".to_string(),
+        lua::LUA_TBOOLEAN => ternary!(lua::lua_toboolean(L, index), "true".to_string(), "false".to_string()),
         lua::LUA_TSTRING => lua::lua_tolstring(L, index).unwrap(),
         lua::LUA_TNUMBER => {
             if unsafe { lua::lua_isinteger(L, index) } == 1 {

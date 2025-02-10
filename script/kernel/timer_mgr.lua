@@ -3,14 +3,10 @@
 local ipairs    = ipairs
 local tpack     = table.pack
 local tunpack   = table.unpack
---local new_guid  = codec.guid_new
+local new_guid  = codec.guid_new
 local lclock_ms = timer.clock_ms
 local ltinsert  = timer.insert
 local ltupdate  = timer.update
-
-local new_guid = function(period, interval)
-    return math.random(100000, 999999)
-end
 
 --定时器精度，20ms
 local TIMER_ACCURYACY = 20

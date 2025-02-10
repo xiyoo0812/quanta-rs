@@ -11,8 +11,7 @@ use lua::to_char;
 use signal_hook::flag;
 use libc::c_char as char;
 
-use luakit::Luakit;
-use crate::test::luakit_test;
+use luakit::{ Luakit, LuaPushFn };
 
 extern "C" {
     fn init_logger();
@@ -197,7 +196,7 @@ impl Quanta {
 
     pub fn run(&mut self) {
         if self.init() {
-            luakit_test(&mut self.m_lua);
+            crate::test::luakit_test(&mut self.m_lua);
             let mut quanta = self.m_lua.get::<luakit::LuaTable>("quanta").unwrap();
             //主循环
             while quanta.get_function("run") {

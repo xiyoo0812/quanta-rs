@@ -27,6 +27,10 @@ impl LuaTable {
         }
     }
 
+    pub fn L(&mut self) -> *mut lua_State {
+        return self.m_L;
+    }
+
     pub fn get<K, R>(&mut self, key: K) -> Option<R> where K: LuaPush, R: LuaRead {
         let _gl = LuaGuard::new(self.m_L);
         unsafe { lua::lua_rawgeti(self.m_L, lua::LUA_REGISTRYINDEX, self.m_index); }

@@ -40,18 +40,10 @@ pub trait LuaGc {
     fn __gc(&mut self) -> bool { true }
 }
 
-impl <T> LuaPush for Option<T> {
+impl <T> LuaPush for Box<T> {
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
-        unsafe{
-            if !self.is_none() {
-                let tboxed: Box<T> = Box::new(self.unwrap());
-                let tptr: *mut T = Box::into_raw(tboxed);
-                lua_push_userdata(L, tptr)
-            } else {
-                lua::lua_pushnil(L);
-                1
-            }
-        }
+        let tptr: *mut T = Box::into_raw(self);
+        lua_push_userdata(L, tptr)
     }
 }
 
@@ -82,6 +74,24 @@ impl LuaPush for *const char {
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
         unsafe { lua::lua_pushstring(L, self); };
         1
+    }
+}
+
+impl LuaPush for Option<Vec<u8>>{
+    fn native_to_lua(self, L: *mut lua_State) -> i32 {
+        let vec = self.unwrap();
+        let buf = vec.as_ptr() as *const i8;
+        unsafe { lua::lua_pushlstring(L, buf,  vec.len()) };
+        1
+    }
+}
+
+impl LuaRead for Option<Vec<u8>>{
+    fn lua_to_native(L: *mut lua_State, index: i32) -> Option<Option<Vec<u8>>> {
+        let mut size: usize = 0;
+        let cstr = unsafe { lua::lua_tolstring_(L, index, &mut size) };
+        let bytes = unsafe { std::slice::from_raw_parts(cstr as *const u8, size) };
+        Some(Some(bytes.to_vec()))
     }
 }
 

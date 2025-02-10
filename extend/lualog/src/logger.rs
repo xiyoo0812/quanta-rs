@@ -351,9 +351,11 @@ impl LogService {
     }
 
     pub fn option(&mut self, logger: Arc<Mutex<LogService>>, path: String, service: String, index: String) {
-        self.path = path;
+        self.path = path.clone();
         self.messagepool.init();
         self.service = format!("{}-{}", service, index);
+        let _ = fs::create_dir_all(path);
+        self.add_dest(service);
         if self.thread_handle.is_none() {
             self.thread_handle = Some(thread::spawn(|| {
                 LogService::run(logger);

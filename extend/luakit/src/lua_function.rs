@@ -257,7 +257,7 @@ macro_rules! impl_func_adapter {
             }
         }
 
-        impl<Z, R $(,$p: 'static)*> LuaPush for FuncWrapper<Z, ($($p,)*), R>
+        impl<Z, R $(,$p: 'static)*> LuaPushFn for FuncWrapper<Z, ($($p,)*), R>
             where Z: FnMut($($p),*) -> R, ($($p,)*): LuaRead, R: LuaPush + 'static {
             fn native_to_lua(self, L: *mut lua_State) -> i32 {
                 unsafe { push_global_function!(Z, L, self.function, lua_adapter::<Self, _, R>) }
@@ -435,7 +435,9 @@ pub fn call_table_function(L: *mut lua_State, table: &str, func: &str, arg_count
 macro_rules! set_function {
     ($lua:expr, $fname:expr, $func:expr) => (
         let wrapper = luakit::FuncWrapper { function: $func, marker: std::marker::PhantomData };
-        $lua.set($fname, wrapper);
+        wrapper.native_to_lua($lua.L());
+        let wref = luakit::Reference::new($lua.L());
+        $lua.set($fname, wref);
     )
 }
 
