@@ -137,7 +137,7 @@ pub fn timer_update(L: *mut lua_State) -> int {
     let escape = lua::lua_tointeger(L, 1) as usize;
     return LUA_TIMER.with_borrow_mut(|lua_timer| {
         let timers = lua_timer.update(escape);
-        luakit::variadic_return!(L, timers)
+        luakit::vector_return!(L, timers)
     });
 }
 

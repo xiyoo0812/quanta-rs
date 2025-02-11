@@ -11,6 +11,7 @@ local lsha1         = ssl.sha1
 local lsha256       = ssl.sha256
 local lsha512       = ssl.sha512
 
+local crc8          = ssl.crc8
 local lhmac_sha1    = ssl.hmac_sha1
 local lhmac_sha256  = ssl.hmac_sha256
 local lhmac_sha512  = ssl.hmac_sha512
@@ -21,7 +22,7 @@ log_info("lrandomkey-> ran: {}", ran)
 local text = "aTmEiujIXS9aezbfaADYGd5fFr2ExUPvw9t0Pijxjw8WMCQQDDsGLBH4RTQwPe"
 local nonce = lb64encode(text)
 local dnonce = lb64decode(nonce)
-log_info("b64encode-> nonce: {}, dnonce:{}", lhex_encode(nonce), dnonce)
+log_info("b64encode-> nonce: {}, dnonce:{}", nonce, dnonce)
 
 --sha
 local value = "123456779"
@@ -38,7 +39,7 @@ local nmd5 = lmd5(value, true)
 local hmd5 = lhex_encode(omd5)
 log_info("omd5: {}, hmd5: {}", nmd5, hmd5)
 
---[[
+
 --hmac_sha
 local key = "1235456"
 local hmac_sha1 = lhex_encode(lhmac_sha1(key, value))
@@ -47,6 +48,12 @@ local hmac_sha256 = lhex_encode(lhmac_sha256(key, value))
 log_info("hmac_sha256: {}", hmac_sha256)
 local hmac_sha512 = lhex_encode(lhmac_sha512(key, value))
 log_info("hmac_sha512: {}", hmac_sha512)
+
+--[[
+log_info("crc8: {}", crc8("123214345345345"))
+log_info("crc8: {}", crc8("dfsdfsdfsdfgsdg"))
+log_info("crc8: {}", crc8("2213weerwbdfgd"))
+log_info("crc8: {}", crc8("++dsfsdf++gbdfgdfg"))
 
 --rsa
 local pem_pub = [[

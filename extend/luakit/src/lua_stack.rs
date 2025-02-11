@@ -77,21 +77,37 @@ impl LuaPush for *const char {
     }
 }
 
-impl LuaPush for Option<Vec<u8>>{
+impl LuaPush for Vec<u8>{
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
-        let vec = self.unwrap();
-        let buf = vec.as_ptr() as *const i8;
-        unsafe { lua::lua_pushlstring(L, buf,  vec.len()) };
+        let buf = self.as_ptr() as *const i8;
+        unsafe { lua::lua_pushlstring(L, buf,  self.len()) };
         1
     }
 }
 
-impl LuaRead for Option<Vec<u8>>{
-    fn lua_to_native(L: *mut lua_State, index: i32) -> Option<Option<Vec<u8>>> {
+impl LuaRead for Vec<u8>{
+    fn lua_to_native(L: *mut lua_State, index: i32) -> Option<Vec<u8>> {
         let mut size: usize = 0;
         let cstr = unsafe { lua::lua_tolstring_(L, index, &mut size) };
         let bytes = unsafe { std::slice::from_raw_parts(cstr as *const u8, size) };
-        Some(Some(bytes.to_vec()))
+        Some(bytes.to_vec())
+    }
+}
+
+impl LuaPush for &[u8]{
+    fn native_to_lua(self, L: *mut lua_State) -> i32 {
+        let buf = self.as_ptr() as *const i8;
+        unsafe { lua::lua_pushlstring(L, buf,  self.len()) };
+        1
+    }
+}
+
+impl<'a> LuaRead for &'a [u8]{
+    fn lua_to_native(L: *mut lua_State, index: i32) -> Option<&'a [u8]> {
+        let mut size: usize = 0;
+        let cstr = unsafe { lua::lua_tolstring_(L, index, &mut size) };
+        let bytes = unsafe { std::slice::from_raw_parts(cstr as *const u8, size) };
+        Some(bytes)
     }
 }
 
@@ -104,7 +120,11 @@ impl LuaPush for String {
 
 impl LuaRead for String {
     fn lua_to_native(L: *mut lua_State, index: i32) -> Option<String> {
-        lua::lua_tolstring(L, index)
+        let bytes = lua::lua_tolstring(L, index);
+        match String::from_utf8(bytes.to_vec()) {
+            Ok(str) => Some(str),
+            Err(_) => None
+        }
     }
 }
 
@@ -123,33 +143,34 @@ impl<'s> LuaPush for &'s str {
     }
 }
 
-impl<T> LuaPush for Vec<T> where T: LuaPush {
-    fn native_to_lua(self, L: *mut lua_State) -> i32 {
-        unsafe {
-            lua::lua_createtable(L, self.len() as i32, 0);
-            for (i, item) in self.into_iter().enumerate() {
-                item.native_to_lua(L);
-                lua::lua_rawseti(L, -2, (i + 1) as i32);
-            }
-            1
-        }
-    }
-}
+// 等 rust 特化特性放开泛型
+// impl<T> LuaPush for Vec<T> where T: LuaPush {
+//     fn native_to_lua(self, L: *mut lua_State) -> i32 {
+//         unsafe {
+//             lua::lua_createtable(L, self.len() as i32, 0);
+//             for (i, item) in self.into_iter().enumerate() {
+//                 item.native_to_lua(L);
+//                 lua::lua_rawseti(L, -2, (i + 1) as i32);
+//             }
+//             1
+//         }
+//     }
+// }
 
-impl<T> LuaRead for Vec<T> where T: LuaRead {
-    fn lua_to_native(L: *mut lua_State, index: i32) -> Option<Vec<T>> {
-        let mut vec = Vec::new();
-        unsafe {
-            let len = lua::lua_rawlen(L, index);
-            for i in 1..len + 1 {
-                lua::lua_rawgeti(L, index, i as i32);
-                vec.push(T::lua_to_native(L, i as i32).unwrap());
-                lua::lua_pop(L, 1);
-            }
-        }
-        Some(vec)
-    }
-}
+// impl<T> LuaRead for Vec<T> where T: LuaRead {
+//     fn lua_to_native(L: *mut lua_State, index: i32) -> Option<Vec<T>> {
+//         let mut vec = Vec::new();
+//         unsafe {
+//             let len = lua::lua_rawlen(L, index);
+//             for i in 1..len + 1 {
+//                 lua::lua_rawgeti(L, index, i as i32);
+//                 vec.push(T::lua_to_native(L, i as i32).unwrap());
+//                 lua::lua_pop(L, 1);
+//             }
+//         }
+//         Some(vec)
+//     }
+// }
 
 impl<K, V> LuaPush for HashMap<K, V> where K: LuaPush, V: LuaPush {
     fn native_to_lua(self, L: *mut lua_State) -> i32 {

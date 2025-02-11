@@ -173,6 +173,14 @@ extern "C" {
     pub fn luaL_checklstring_(L: *mut lua_State, arg: int, l: *mut size_t) -> *const char;
     #[link_name = "luaL_optlstring"]
     pub fn luaL_optlstring_(L: *mut lua_State, arg: int, def: *const char, l: *mut size_t) -> *const char;
+    #[link_name = "luaL_checknumber"]
+    pub fn luaL_checknumber_(L: *mut lua_State, arg: int) -> lua_Number;
+    #[link_name = "luaL_optnumber"]
+    pub fn luaL_optnumber_(L: *mut lua_State, arg: int, def: lua_Number) -> lua_Number;
+    #[link_name = "luaL_checkinteger"]
+    pub fn luaL_checkinteger_(L: *mut lua_State, arg: int) -> lua_Integer;
+    #[link_name = "luaL_optinteger"]
+    pub fn luaL_optinteger_(L: *mut lua_State, arg: int, def: lua_Integer) -> lua_Integer;
 
     pub fn lua_pushnil(L: *mut lua_State);
     pub fn lua_pushnumber(L: *mut lua_State, n: lua_Number);
@@ -337,57 +345,76 @@ pub fn lua_pushglobaltable(L: *mut lua_State) {
     unsafe { lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS); }
 }
 
-pub fn from_cstr(s: *const char) -> Option<String> {
-    let res = unsafe { CStr::from_ptr(s).to_str() };
-    match res {
-        Ok(x) => Some(x.to_string()),
-        Err(_) => None,
-    }
+pub fn to_cptr(s: &[u8]) -> *const char {
+    s.as_ptr() as *const char
+}
+pub fn to_utf8(s: &[u8]) -> String {
+    String::from_utf8_lossy(s).to_string()
 }
 
-pub fn from_cstrlen(s: *const char, l: size_t) -> Option<String> {
-    let bytes = unsafe { std::slice::from_raw_parts(s as *const u8, l) };
-    match std::str::from_utf8(bytes) {
-        Ok(v) => Some(v.to_string()),
-        Err(_) => None,
-    }
+pub fn to_string(s: *const char) -> String {
+    unsafe { CStr::from_ptr(s).to_str().unwrap_or("").to_string() }
+}
+
+pub fn from_cstr<'a>(s: *const char) -> &'a [u8] {
+    unsafe { CStr::from_ptr(s).to_bytes() }
+}
+
+pub fn from_cstrlen<'a>(s: *const char, l: size_t) -> &'a [u8] {
+    unsafe { std::slice::from_raw_parts(s as *const u8, l) }
 }
 
 pub fn lua_toboolean(L: *mut lua_State, i: int) -> bool {
     unsafe { lua_toboolean_(L, i) != 0 }
 }
 
-pub fn lua_tostring(L: *mut lua_State, i: int) -> Option<String> {
+pub fn lua_tostring<'a>(L: *mut lua_State, i: int) -> &'a [u8] {
     let cstr = unsafe { lua_tolstring_(L, i, ptr::null_mut()) };
     from_cstr(cstr)
 }
 
-pub fn lua_tolstring(L: *mut lua_State, i: int) -> Option<String> {
+pub fn lua_tolstring<'a>(L: *mut lua_State, i: int) -> &'a [u8] {
     let mut size: size_t = 0;
     let cstr = unsafe { lua_tolstring_(L, i, &mut size) };
     from_cstrlen(cstr, size)
 }
 
-pub fn luaL_checkstring(L: *mut lua_State, i: int) -> Option<String> {
+pub fn luaL_checkstring<'a>(L: *mut lua_State, i: int) -> &'a [u8] {
     let cstr = unsafe { luaL_checklstring_(L, i, ptr::null_mut()) };
     from_cstr(cstr)
 }
 
-pub fn luaL_checklstring(L: *mut lua_State, i: int) -> Option<String> {
+pub fn luaL_checklstring<'a>(L: *mut lua_State, i: int) -> &'a [u8] {
     let mut size: size_t = 0;
     let cstr = unsafe { luaL_checklstring_(L, i, &mut size) };
     from_cstrlen(cstr, size)
 }
 
-pub fn luaL_optstring(L: *mut lua_State, i: int, def: *const char) -> String {
+pub fn luaL_optstring<'a>(L: *mut lua_State, i: int, def: *const char) -> &'a [u8] {
     let cstr = unsafe { luaL_optlstring_(L, i, def, ptr::null_mut()) };
-    from_cstr(cstr).unwrap()
+    from_cstr(cstr)
 }
 
-pub fn luaL_optlstring(L: *mut lua_State, i: int, def: *const char) -> String {
+pub fn luaL_optlstring<'a>(L: *mut lua_State, i: int, def: *const char) -> &'a [u8] {
     let mut size: size_t = 0;
     let cstr = unsafe { luaL_optlstring_(L, i, def, &mut size) };
-    from_cstrlen(cstr, size).unwrap()
+    from_cstrlen(cstr, size)
+}
+
+pub fn luaL_checknumber(L: *mut lua_State, arg: int) -> f64 {
+    unsafe { luaL_checknumber_(L, arg) }
+}
+
+pub fn luaL_optnumber(L: *mut lua_State, i: int, def: f64) -> f64 {
+    unsafe { luaL_optnumber_(L, i, def) }
+}
+
+pub fn luaL_checkinteger(L: *mut lua_State, arg: int) -> u64 {
+    unsafe { luaL_checkinteger_(L, arg) as u64 }
+}
+
+pub fn luaL_optinteger(L: *mut lua_State, i: int, def: u64) -> u64 {
+    unsafe { luaL_optinteger_(L, i, def as isize) as u64 }
 }
 
 pub fn lua_tonumber(L: *mut lua_State, i: int) -> lua_Number {

@@ -22,14 +22,8 @@ fn encode_number(L: *mut lua_State, idx: i32) -> Value {
 fn encode_key(L: *mut lua_State, idx: i32) -> String {
     let ttype = unsafe { lua::lua_type(L, idx) };
     match ttype {
-        lua::LUA_TSTRING=> {
-            let val: Option<String> = lua::lua_tolstring(L, idx);
-            return val.unwrap_or_default();
-        },
-        lua::LUA_TNUMBER=> {
-            let val = lua::lua_tonumber(L, idx);
-            return val.to_string();
-        },
+        lua::LUA_TSTRING=> lua::to_utf8(lua::lua_tolstring(L, idx)),
+        lua::LUA_TNUMBER=> lua::lua_tonumber(L, idx).to_string(),
         _ => lua::luaL_error(L, cstr!("encode can't pack key"))
     }
 }
@@ -76,7 +70,7 @@ pub unsafe fn encode_one(L: *mut lua_State, emy_as_arr: bool, idx: i32, depth: u
             return json!(val);
         }
         lua::LUA_TSTRING=> {
-            let val = lua::lua_tostring(L, idx).unwrap_or_default();
+            let val = lua::to_utf8(lua::lua_tolstring(L, idx));
             return json!(val);
         }
         lua::LUA_TTHREAD => return json!("unsupported thread"),
@@ -146,7 +140,7 @@ pub fn decode_core(L: *mut lua_State, numkeyable: bool, json: String) -> int {
 }
 
 pub fn decode_impl(L: *mut lua_State) -> int {
-    let json = lua::lua_tolstring(L, 1).unwrap_or_default();
+    let json = lua::to_utf8(lua::lua_tolstring(L, 1));
     let numkeyable = lua::lua_toboolean(L, 2);
     return decode_core(L, numkeyable, json);
 }

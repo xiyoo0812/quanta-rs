@@ -60,7 +60,7 @@ pub unsafe fn encode_one(L: *mut lua_State, emy_as_arr: bool, idx: i32, depth: u
             return Value::Bool(val);
         }
         lua::LUA_TSTRING=> {
-            let val = lua::lua_tostring(L, idx).unwrap_or_default();
+            let val = lua::to_utf8(lua::lua_tostring(L, idx));
             return Value::String(val);
         }
         lua::LUA_TNIL => return Value::String("unsupported nil".to_string()),
@@ -125,8 +125,8 @@ pub fn decode_core(L: *mut lua_State, yaml: String) -> int {
     }
 }
 
-pub fn decode(L: *mut lua_State) -> int {
-    let yaml = lua::lua_tolstring(L, 1).unwrap_or_default();
+pub fn decode(L: *mut lua_State) -> int {    
+    let yaml = lua::to_utf8(lua::lua_tolstring(L, 1));
     return decode_core(L, yaml);
 }
 
@@ -144,7 +144,7 @@ pub fn encode(L: *mut lua_State) -> int {
 }
 
 pub fn open(L: *mut lua_State) -> int {
-    let filename = lua::lua_tolstring(L, 1).unwrap_or_default();
+    let filename = lua::to_utf8(lua::lua_tolstring(L, 1));
     let res = File::open(filename);
     match res {
         Ok(mut f) => {
@@ -160,7 +160,7 @@ pub fn open(L: *mut lua_State) -> int {
 
 pub fn save(L: *mut lua_State) -> int {
     unsafe {
-        let filename = lua::lua_tolstring(L, 1).unwrap_or_default();
+        let filename = lua::to_utf8(lua::lua_tolstring(L, 1));
         let res = OpenOptions::new().write(true).create(true).open(filename);
         match res {
             Ok(mut f) => {

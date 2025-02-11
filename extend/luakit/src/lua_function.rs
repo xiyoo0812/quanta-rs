@@ -408,9 +408,9 @@ pub fn lua_call_function(L: *mut lua_State, arg_count: int, ret_count: int) -> R
 
         lua::lua_insert(L, func_idx);
         if lua::lua_pcall(L, arg_count, ret_count, func_idx) != 0 {
-            let error_msg = lua::lua_tostring(L, -1).unwrap();
+            let error_msg = lua::to_utf8(lua::lua_tostring(L, -1));
             lua::lua_pop(L, 2);  // 弹出错误信息和 traceback
-            return Err(error_msg.to_string());
+            return Err(error_msg);
         }
         lua::lua_remove(L, -(ret_count + 1));  // 移除 'traceback'
     }
@@ -574,4 +574,18 @@ macro_rules! variadic_return {
         $(argc += $p.native_to_lua($lua);)+
         argc
     }}
+}
+
+#[macro_export]
+macro_rules! vector_return {
+    ($L:expr, $vec:expr) => {
+        unsafe {
+            lua::lua_createtable($L, $vec.len() as i32, 0);
+            for (i, item) in $vec.into_iter().enumerate() {
+                item.native_to_lua($L);
+                lua::lua_rawseti($L, -2, (i + 1) as i32);
+            }
+            1
+        }
+    }
 }

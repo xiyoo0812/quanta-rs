@@ -16,7 +16,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use dyn_fmt::Arguments;
 use once_cell::sync::Lazy;
-use lua::{ from_cstr, ternary, lua_State };
+use lua::{ ternary, to_string, lua_State };
 use logger::{ LogLevel, RollingType, LogService };
 use luakit::{ Luakit, LuaRead, LuaPush, LuaPushFn };
 
@@ -36,7 +36,7 @@ fn read_args(L: *mut lua_State, flag: int, index: int) -> String {
         lua::LUA_TFUNCTION => "function".to_string(),
         lua::LUA_TUSERDATA | lua::LUA_TLIGHTUSERDATA => "userdata".to_string(),
         lua::LUA_TBOOLEAN => ternary!(lua::lua_toboolean(L, index), "true".to_string(), "false".to_string()),
-        lua::LUA_TSTRING => lua::lua_tolstring(L, index).unwrap(),
+        lua::LUA_TSTRING => lua::to_utf8(lua::lua_tolstring(L, index)),
         lua::LUA_TNUMBER => {
             if unsafe { lua::lua_isinteger(L, index) } == 1 {
                 return format!("{}", lua::lua_tointeger(L, index));
@@ -45,9 +45,9 @@ fn read_args(L: *mut lua_State, flag: int, index: int) -> String {
         }
         lua::LUA_TTABLE => {
             if (flag & LOG_FLAG_FORMAT) == LOG_FLAG_FORMAT {
-                return lua::lua_tolstring(L, index).unwrap();
+                return lua::to_utf8(lua::lua_tolstring(L, index));
             }
-            lua::lua_tolstring(L, index).unwrap()
+            lua::to_utf8(lua::lua_tolstring(L, index))
         } 
         _ => "unsuppert data type".to_string(),
     }
@@ -168,14 +168,14 @@ pub unsafe extern "C" fn stop_logger() {
 #[no_mangle]
 pub unsafe extern "C" fn option_logger(path: *const char, service: *const char, index: *const char) {
     let logger = Arc::clone(&S_LOGGER);
-    S_LOGGER.lock().unwrap().option(logger, from_cstr(path).unwrap(), from_cstr(service).unwrap(), from_cstr(index).unwrap());
+    S_LOGGER.lock().unwrap().option(logger, to_string(path), to_string(service), to_string(index));
 }
 
 macro_rules! LOG_OUTPUT {
     ($name:ident, $level:expr, $tag:expr, $feature:expr, $source:expr, $line:expr) => {
         #[no_mangle]
         pub unsafe extern "C" fn $name(msg: *const char) {
-            S_LOGGER.lock().unwrap().output($level as u32, &from_cstr(msg).unwrap(), $tag.to_string(), $feature.to_string(), $source, $line);
+            S_LOGGER.lock().unwrap().output($level as u32, &to_string(msg), $tag.to_string(), $feature.to_string(), $source, $line);
         }
     };
 }

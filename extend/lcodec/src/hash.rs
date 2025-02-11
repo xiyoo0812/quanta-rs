@@ -14,9 +14,14 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
 
 pub fn hash_code(L: *mut lua_State) -> u64 {
     let ltype = unsafe { lua::lua_type(L, 1) };
-    match ltype {
+    let mut value = match ltype {
         lua::LUA_TNUMBER => calculate_hash(&lua::lua_tointeger(L,1)),
-        lua::LUA_TSTRING => calculate_hash(&lua::lua_tolstring(L, 1).unwrap()),
+        lua::LUA_TSTRING => calculate_hash(&lua::to_utf8(lua::lua_tolstring(L, 1))),
         _ => lua::luaL_error(L, to_char!("hashkey only support number or string!"))
+    };
+    let modv = lua::luaL_optinteger(L, 2, 0);
+    if modv > 0 {
+        value %= modv;
     }
+    value
 }

@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 use libc::c_int as int;
-use lua::{cstr, to_char, lua_State };
+use lua::{cstr, to_char, to_cptr, lua_State };
 
 use crate::lua_stack::LuaGc;
 use crate::{lua_get_meta_name, lua_load_userdata};
@@ -11,14 +11,14 @@ pub fn lua_class_index<T>(L: *mut lua_State) -> int {
     unsafe {
         let objptr = lua_load_userdata(L, 1);
         let key = lua::lua_tostring(L, 2);
-        if objptr.is_null() || key.is_none() {
+        if objptr.is_null() || key.is_empty() {
             lua::lua_pushnil(L);
             return 1;
         }
         let meta_name = lua_get_meta_name::<T>();
         lua::luaL_getmetatable(L, to_char!(meta_name));
         if lua::lua_istable(L, -1) {
-            lua::lua_getfield(L, -1, to_char!(key.unwrap()));
+            lua::lua_getfield(L, -1, to_cptr(key));
             if lua::lua_istable(L, -1) {
                 lua::lua_getfield(L, -1, cstr!("__getter"));
                 if lua::lua_isfunction(L, -1) {
@@ -38,13 +38,13 @@ pub fn lua_class_newindex<T>(L: *mut lua_State) -> int {
     unsafe {
         let objptr = lua_load_userdata(L, 1);
         let key = lua::lua_tostring(L, 2);
-        if objptr.is_null() || key.is_none() {
+        if objptr.is_null() || key.is_empty() {
             return 0;
         }
         let meta_name = lua_get_meta_name::<T>();
         lua::luaL_getmetatable(L, to_char!(meta_name));
         if lua::lua_istable(L, -1) {
-            lua::lua_getfield(L, -1, to_char!(key.unwrap()));
+            lua::lua_getfield(L, -1, to_cptr(key));
             if lua::lua_isnil(L, -1) {
                 //没有找到成员虚表信息直接写
                 lua::lua_pop(L, 2);

@@ -74,17 +74,17 @@ pub fn guid_number(guid: String) -> u64 {
     guid.parse::<u64>().unwrap_or(0)
 }
 
-pub fn guid_encode(val: u64) -> String {
+pub fn guid_encode(val: u64) -> Vec<u8> {
     let mut val = val;
-    let mut tmp = vec!['\0'; LETTER_LEN];
+    let mut tmp: Vec<u8> = vec!['\0' as u8; LETTER_LEN];
     for i in 0..LETTER_LEN - 1 {
-        tmp[i] = LETTERS.chars().nth((val % LETTER_SIZE) as usize).unwrap();
+        tmp[i] = LETTERS.chars().nth((val % LETTER_SIZE) as usize).unwrap() as u8;
         val /= LETTER_SIZE;
         if val == 0 {
             break;
         }
     }
-    tmp.into_iter().collect()
+    tmp
 }
 
 fn find_index(val: char) -> u64 {
@@ -96,12 +96,11 @@ fn find_index(val: char) -> u64 {
     }
 }
 
-pub fn guid_decode(sval: String) -> u64 {
+pub fn guid_decode(sval: &[u8]) -> u64 {
     let mut val = 0u64;
     let len = sval.len();
-    let cval = sval.as_bytes();
     for i in 0..len-1 {
-        let k = find_index(cval[i] as char);
+        let k = find_index(sval[i] as char);
         val += k * LETTER_SIZE.pow(i as u32);
     }
     val
@@ -111,7 +110,7 @@ fn format_guid(L: *mut lua_State) -> u64 {
     let ltype = unsafe{ lua::lua_type(L, 1) };
     match ltype {
         lua::LUA_TSTRING => {
-            let cval = lua::lua_tolstring(L, 1).unwrap();
+            let cval = lua::to_utf8(lua::lua_tolstring(L, 1));
             cval.parse::<u64>().unwrap_or(0)
         },
         lua::LUA_TNUMBER => lua::lua_tointeger(L, 1) as u64,

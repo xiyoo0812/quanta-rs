@@ -6,7 +6,7 @@ extern crate toml;
 use libc::c_int as int;
 use toml::{ Value, Table };
 use lua::{ cstr, to_char, lua_State };
-use std::{fs::File, fs::OpenOptions, io::Read, io::Write};
+use std::{fs::{File, OpenOptions}, io::{Read, Write}};
 
 pub const MAX_ENCODE_DEPTH: u32     = 16;
 
@@ -22,14 +22,8 @@ fn encode_number(L: *mut lua_State, idx: i32) -> Value {
 fn encode_key(L: *mut lua_State, idx: i32) -> String {
     let ttype = unsafe { lua::lua_type(L, idx) };
     match ttype {
-        lua::LUA_TSTRING=> {
-            let val: Option<String> = lua::lua_tolstring(L, idx);
-            return val.unwrap_or_default();
-        },
-        lua::LUA_TNUMBER=> {
-            let val = lua::lua_tonumber(L, idx);
-            return val.to_string();
-        },
+        lua::LUA_TSTRING=> lua::to_utf8(lua::lua_tolstring(L, idx)),
+        lua::LUA_TNUMBER=> lua::lua_tonumber(L, idx).to_string(),
         _ => lua::luaL_error(L, cstr!("encode can't pack key"))
     }
 }
@@ -74,7 +68,7 @@ pub unsafe fn encode_one(L: *mut lua_State, emy_as_arr: bool, idx: i32, depth: u
             return Value::Boolean(val);
         }
         lua::LUA_TSTRING=> {
-            let val = lua::lua_tostring(L, idx).unwrap_or_default();
+            let val = lua::to_utf8(lua::lua_tostring(L, idx));
             return Value::String(val);
         }
         lua::LUA_TNIL => return Value::String("unsupported nil".to_string()),
@@ -139,7 +133,7 @@ pub fn decode_core(L: *mut lua_State, numkeyable: bool, toml: String) -> int {
 }
 
 pub fn decode(L: *mut lua_State) -> int {
-    let toml = lua::lua_tolstring(L, 1).unwrap_or_default();
+    let toml = lua::to_utf8(lua::lua_tolstring(L, 1));
     let numkeyable = lua::lua_toboolean(L, 2);
     return decode_core(L, numkeyable, toml);
 }
@@ -158,7 +152,7 @@ pub fn encode(L: *mut lua_State) -> int {
 }
 
 pub fn open(L: *mut lua_State) -> int {
-    let filename = lua::lua_tolstring(L, 1).unwrap_or_default();
+    let filename = lua::to_utf8(lua::lua_tolstring(L, 1));
     let res = File::open(filename);
     match res {
         Ok(mut f) => {
@@ -174,7 +168,7 @@ pub fn open(L: *mut lua_State) -> int {
 
 pub fn save(L: *mut lua_State) -> int {
     unsafe {
-        let filename = lua::lua_tolstring(L, 1).unwrap_or_default();
+        let filename = lua::to_utf8(lua::lua_tolstring(L, 1));
         let res = OpenOptions::new().write(true).create(true).open(filename);
         match res {
             Ok(mut f) => {

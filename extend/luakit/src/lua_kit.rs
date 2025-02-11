@@ -58,7 +58,7 @@ impl Luakit {
         unsafe {
             lua::lua_getglobal(self.m_L, cstr!("package"));
             lua::lua_getfield(self.m_L, -1, to_char!(field));
-            lua::lua_tostring(self.m_L, -1).unwrap()
+            lua::to_utf8(lua::lua_tostring(self.m_L, -1))
         }
     }
 
@@ -102,8 +102,8 @@ impl Luakit {
     pub fn run_file(&mut self, file: &String) ->Result<bool, String> {
         let _gl = LuaGuard::new(self.m_L);
         if lua::luaL_loadfile(self.m_L, to_char!(file)) != 0 {
-            let err= lua::lua_tostring(self.m_L, -1).unwrap();
-            print!("lua loadfile err: {}", err);
+            let err = lua::to_utf8(lua::lua_tostring(self.m_L, -1));
+            println!("lua loadfile err: {}", err);
             return Err(err);
         }
         return lua_call_function(self.m_L, 0, 0);
@@ -113,7 +113,7 @@ impl Luakit {
         let _gl = LuaGuard::new(self.m_L);
         unsafe {
             if lua::luaL_loadstring(self.m_L, to_char!(script)) != 0 {
-                let err= lua::lua_tostring(self.m_L, -1).unwrap();
+                let err = lua::to_utf8(lua::lua_tostring(self.m_L, -1));
                 println!("lua loadstring err: {}", err);
                 return Err(err);
             }
