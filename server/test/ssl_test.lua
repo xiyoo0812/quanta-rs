@@ -1,6 +1,8 @@
 --ssl_test.lua
 
 local log_info      = logger.info
+local sformat       = string.format
+
 local lmd5          = ssl.md5
 local lrandomkey    = ssl.randomkey
 local lb64encode    = ssl.b64_encode
@@ -16,45 +18,57 @@ local lhmac_sha1    = ssl.hmac_sha1
 local lhmac_sha256  = ssl.hmac_sha256
 local lhmac_sha512  = ssl.hmac_sha512
 
---base64
-local ran = lrandomkey(12, true)
-log_info("lrandomkey-> ran: {}", ran)
-local text = "aTmEiujIXS9aezbfaADYGd5fFr2ExUPvw9t0Pijxjw8WMCQQDDsGLBH4RTQwPe"
-local nonce = lb64encode(text)
-local dnonce = lb64decode(nonce)
-log_info("b64encode-> nonce: {}, dnonce:{}", nonce, dnonce)
+local pbkdf2_sha1   = ssl.pbkdf2_sha1
+local pbkdf2_sha256 = ssl.pbkdf2_sha256
 
---sha
-local value = "123456779"
-local sha1 = lhex_encode(lsha1(value))
-log_info("sha1: {}", sha1)
-local sha256 = lhex_encode(lsha256(value))
-log_info("sha256: {}", sha256)
-local sha512 = lhex_encode(lsha512(value))
-log_info("sha512: {}", sha512)
+-- --base64
+-- local ran = lrandomkey(12, true)
+-- log_info("lrandomkey-> ran: {}", ran)
+-- local text = "aTmEiujIXS9aezbfaADYGd5fFr2ExUPvw9t0Pijxjw8WMCQQDDsGLBH4RTQwPe"
+-- local nonce = lb64encode(text)
+-- local dnonce = lb64decode(nonce)
+-- log_info("b64encode-> nonce: {}, dnonce:{}", nonce, dnonce)
 
---md5
-local omd5 = lmd5(value)
-local nmd5 = lmd5(value, true)
-local hmd5 = lhex_encode(omd5)
-log_info("omd5: {}, hmd5: {}", nmd5, hmd5)
+-- --sha
+-- local value = "123456779"
+-- local sha1 = lhex_encode(lsha1(value))
+-- log_info("sha1: {}", sha1)
+-- local sha256 = lhex_encode(lsha256(value))
+-- log_info("sha256: {}", sha256)
+-- local sha512 = lhex_encode(lsha512(value))
+-- log_info("sha512: {}", sha512)
+
+-- --md5
+-- local omd5 = lmd5(value)
+-- local nmd5 = lmd5(value, true)
+-- local hmd5 = lhex_encode(omd5)
+-- log_info("omd5: {}, hmd5: {}", nmd5, hmd5)
 
 
---hmac_sha
-local key = "1235456"
-local hmac_sha1 = lhex_encode(lhmac_sha1(key, value))
-log_info("hmac_sha1: {}", hmac_sha1)
-local hmac_sha256 = lhex_encode(lhmac_sha256(key, value))
-log_info("hmac_sha256: {}", hmac_sha256)
-local hmac_sha512 = lhex_encode(lhmac_sha512(key, value))
-log_info("hmac_sha512: {}", hmac_sha512)
+-- --hmac_sha
+-- local key = "1235456"
+-- local hmac_sha1 = lhex_encode(lhmac_sha1(key, value))
+-- log_info("hmac_sha1: {}", hmac_sha1)
+-- local hmac_sha256 = lhex_encode(lhmac_sha256(key, value))
+-- log_info("hmac_sha256: {}", hmac_sha256)
+-- local hmac_sha512 = lhex_encode(lhmac_sha512(key, value))
+-- log_info("hmac_sha512: {}", hmac_sha512)
+
+-- local username = "abcdefg"
+-- local passwd = "123456"
+-- local salt = "U7efME3FYncgKHd9LP0LPg=="
+-- local sha1_key = lmd5(sformat("%s:mongo:%s", username, passwd), 1)
+-- local salt_sha1 = lhex_encode(pbkdf2_sha1(sha1_key, salt, 10000))
+-- log_info("pbkdf2_sha1: {}", salt_sha1)
+-- local salt_sha256 = lhex_encode(pbkdf2_sha256(passwd, salt, 10000))
+-- log_info("pbkdf2_sha256: {}", salt_sha256)
 
 --[[
 log_info("crc8: {}", crc8("123214345345345"))
 log_info("crc8: {}", crc8("dfsdfsdfsdfgsdg"))
 log_info("crc8: {}", crc8("2213weerwbdfgd"))
 log_info("crc8: {}", crc8("++dsfsdf++gbdfgdfg"))
-
+]]
 --rsa
 local pem_pub = [[
 MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCWKUc5BTsvNKLv389mqShFhg7l
@@ -62,7 +76,7 @@ HbG8SyyAiHZ5gMMMoBGayBGgOCGXHDRDUabr0E8xFtSApu9Ppuj3frzwRDcj4Q69
 yXc/x1+a18Jt96DI/DJEkmkmo/Mr+pmY4mVFk4a7pxnXpynBUz7E7vp9/XvMs84L
 DFqqvGiSmW/YKJfsAQIDAQAB
 ]]
---[[
+
 local pem_pri = [[
 MIICWwIBAAKBgQCWKUc5BTsvNKLv389mqShFhg7lHbG8SyyAiHZ5gMMMoBGayBGg
 OCGXHDRDUabr0E8xFtSApu9Ppuj3frzwRDcj4Q69yXc/x1+a18Jt96DI/DJEkmkm
@@ -78,20 +92,24 @@ nPIvX+ZBsec6WRWd/5bq/09L/JhR9GGnFE6WjUsRHDLHDH+cKfIF+Bya93+2wwJX
 +tW72Sp/Rc/xwU99bwJAfUw9Nfv8llVA2ZCHkHGNc70BjTyaT/TxLV6jcouDYMTW
 RfSHi27F/Ew6pENe4AwY2sfEV2TXrwEdrvfjNWFSPw==
 ]]
+
+local x = lb64decode(pem_pub)
+log_info("lb64decode: {}, {}",  #x, lhex_encode(x))
+
+-- local pubkey = ssl.rsa_pubkey(pem_pub)
+-- local prikey = ssl.rsa_prikey(pem_pri)
+-- log_info("rsa_init: {}, {}",  pubkey, prikey)
+
+-- local rsav1 = pubkey.encrypt(pem_pri)
+-- log_info("rsa_encrypt: {}, {}",  #rsav1, lhex_encode(rsav1))
+-- local rsav2 = prikey.decrypt(rsav1)
+-- log_info("rsa_decrypt: {}, {}",  #rsav2, rsav2)
+-- local rsav3 = prikey.sign(pem_pri)
+-- log_info("rsa_sencode: {}, {}",  #rsav3, lhex_encode(rsav3))
+-- local rsav4 = pubkey.pub_decode(rsav3)
+-- log_info("rsa_pdecode: {}, {}",  #rsav4, rsav4)
+
 --[[
-local pubkey = ssl.rsa_init_pubkey(pem_pub)
-local prikey = ssl.rsa_init_prikey(pem_pri)
-log_info("rsa_init: {}, {}",  pubkey, prikey)
-
-local rsav1 = pubkey.pub_encode(pem_pri)
-log_info("rsa_pencode: {}, {}",  #rsav1, lhex_encode(rsav1))
-local rsav2 = prikey.pri_decode(rsav1)
-log_info("rsa_sdecode: {}, {}",  #rsav2, rsav2)
-local rsav3 = prikey.pri_encode(pem_pri)
-log_info("rsa_sencode: {}, {}",  #rsav3, lhex_encode(rsav3))
-local rsav4 = pubkey.pub_decode(rsav3)
-log_info("rsa_pdecode: {}, {}",  #rsav4, rsav4)
-
 local data = {}
 for i = 1, 200 do
     data[i] = {
