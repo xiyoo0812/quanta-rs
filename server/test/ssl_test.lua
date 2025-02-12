@@ -71,43 +71,43 @@ log_info("crc8: {}", crc8("++dsfsdf++gbdfgdfg"))
 ]]
 --rsa
 local pem_pub = [[
-MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCWKUc5BTsvNKLv389mqShFhg7l
-HbG8SyyAiHZ5gMMMoBGayBGgOCGXHDRDUabr0E8xFtSApu9Ppuj3frzwRDcj4Q69
-yXc/x1+a18Jt96DI/DJEkmkmo/Mr+pmY4mVFk4a7pxnXpynBUz7E7vp9/XvMs84L
-DFqqvGiSmW/YKJfsAQIDAQAB
+-----BEGIN RSA PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC8iJ4Qgsxxn17YuV+MJYhjovE9
+uaU/fpOx5MUZUamsdSDy/cHO/v4zPV6/PPxqJPIurK5J/RCke7t+pHkYu/hMjFr6
+Q2DQ3dhS+7r0WXX3pbf0tu9glwTxCYmwX4GPlF8fDp8qRLGMJbnA9PeNyTsPciOI
+5riO65kqCVthrB5RVwIDAQAB
+-----END RSA PUBLIC KEY-----
 ]]
 
 local pem_pri = [[
-MIICWwIBAAKBgQCWKUc5BTsvNKLv389mqShFhg7lHbG8SyyAiHZ5gMMMoBGayBGg
-OCGXHDRDUabr0E8xFtSApu9Ppuj3frzwRDcj4Q69yXc/x1+a18Jt96DI/DJEkmkm
-o/Mr+pmY4mVFk4a7pxnXpynBUz7E7vp9/XvMs84LDFqqvGiSmW/YKJfsAQIDAQAB
-AoGANhfDnPJZ+izbf07gH0rTg4wB5J5YTwzDiL/f8fAlE3C8NsZYtx9RVmamGxQY
-bf158aSYQ4ofTlHBvZptxJ3GQLzJQd2K15UBzBe67y2umN7oP3QD+nUhw83PnD/R
-A+aTmEiujIXS9aezbfaADYGd5fFr2ExUPvw9t0Pijxjw8WMCQQDDsGLBH4RTQwPe
-koVHia72LF7iQPP75AaOZIuhCTffaLsimA2icO+8/XT2yaeyiXqHn1Wzyk1ZrGgy
-MTeTu9jPAkEAxHDPRxNpPUhWQ6IdPWflecKpzT7fPcNJDyd6/Mg3MghWjuWc1xTl
-nmBDdlQGOvKsOY4K4ihDZjVMhBnqp16CLwJAOvaT2wMHGRtxOAhIFnUa/dwCvwO5
-QGXFv/P1ypD/f9aLxHGycga7heOM8atzVy1reR/+b8z+H43+W1lPGLmaKwJAJ2zA
-nPIvX+ZBsec6WRWd/5bq/09L/JhR9GGnFE6WjUsRHDLHDH+cKfIF+Bya93+2wwJX
-+tW72Sp/Rc/xwU99bwJAfUw9Nfv8llVA2ZCHkHGNc70BjTyaT/TxLV6jcouDYMTW
-RfSHi27F/Ew6pENe4AwY2sfEV2TXrwEdrvfjNWFSPw==
+-----BEGIN RSA PRIVATE KEY-----
+MIICXAIBAAKBgQC8iJ4Qgsxxn17YuV+MJYhjovE9uaU/fpOx5MUZUamsdSDy/cHO
+/v4zPV6/PPxqJPIurK5J/RCke7t+pHkYu/hMjFr6Q2DQ3dhS+7r0WXX3pbf0tu9g
+lwTxCYmwX4GPlF8fDp8qRLGMJbnA9PeNyTsPciOI5riO65kqCVthrB5RVwIDAQAB
+AoGALn/znFbmXc/U8NcnvcU0En8JyROUskhh3Spzgn8lvidVbRkxSACUacblK327
+M+LQ6LomcpE8HZV29RFT3Mnfv3S3A2w+n0vpErK0ZIXi/0XHI3hI/KLeu1ZED+cN
+jTtO+mAl8y6lQssqZMh0+ZPP1W/XcKyeiOKfHUeMCvobu4ECQQDIIqQeWsHWI8At
+X2vTP5dZ0/IN7Xgnqyyl6jY2VklxrGzpnZ5TGmg2x0qPd9FeUnxM639yMbFTcHdv
+xN4MPlcnAkEA8Sjwqyr/2WPjAvP3mu+IIblrQuEDrZIteNrdoqcOgAKeI7vfHRrz
+RfjcmWstnN6sHFX+Xi0zWlQoY9h8ThwSUQJAEVIuMhJYxFfDwimIA3h1eOjHAj2T
+MJu3+YQTvRAquxPZOT7S/Q5EBrmo0lHkZO1upJmdJhz24+nP7HR1Y0nh8QJBAKPE
+cpM6kx40p9/Ef1wW1/JW8VEsbwv63ahZsPMY0U76+Bs6JMymFZhp5JzG3OXPjT98
+4k1gEqR/zCHpzJhaldECQFQXmxVMQqcjaedNrBkPwn7Qs4dDxGMqLYk2sk7f//E1
+J9rSdD3+UFNRBHrhyAv8xE0q2Diun8J6boOVhbhVknk=
+-----END RSA PRIVATE KEY-----
 ]]
 
-local x = lb64decode(pem_pub)
-log_info("lb64decode: {}, {}",  #x, lhex_encode(x))
+local pubkey = ssl.rsa_pubkey(pem_pub)
+local prikey = ssl.rsa_prikey(pem_pri)
 
--- local pubkey = ssl.rsa_pubkey(pem_pub)
--- local prikey = ssl.rsa_prikey(pem_pri)
--- log_info("rsa_init: {}, {}",  pubkey, prikey)
-
--- local rsav1 = pubkey.encrypt(pem_pri)
--- log_info("rsa_encrypt: {}, {}",  #rsav1, lhex_encode(rsav1))
--- local rsav2 = prikey.decrypt(rsav1)
--- log_info("rsa_decrypt: {}, {}",  #rsav2, rsav2)
--- local rsav3 = prikey.sign(pem_pri)
--- log_info("rsa_sencode: {}, {}",  #rsav3, lhex_encode(rsav3))
--- local rsav4 = pubkey.pub_decode(rsav3)
--- log_info("rsa_pdecode: {}, {}",  #rsav4, rsav4)
+local rsav1 = pubkey.encrypt(pem_pub)
+log_info("rsa_encrypt: {}, {}",  #rsav1, lhex_encode(rsav1))
+local rsav2 = prikey.decrypt(rsav1)
+log_info("rsa_decrypt: {}, {}",  #rsav2, rsav2)
+local rsav3 = prikey.sign(pem_pub)
+log_info("rsa_sign: {}, {}",  #rsav3, lhex_encode(rsav3))
+local rsav4 = pubkey.verify(pem_pub, rsav3)
+log_info("rsa_verify: {}",  rsav4)
 
 --[[
 local data = {}

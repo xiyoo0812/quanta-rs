@@ -79,6 +79,10 @@ macro_rules! ssl_pbkdf2_impl {
     }}
 }
 
+fn preprocess(s: &str) -> String {
+    s.chars().filter(|c| !c.is_whitespace()).collect()
+}
+
 #[no_mangle]
 pub extern "C" fn luaopen_lssl(L: *mut lua_State) -> i32 {
     let mut kit = Luakit::load(L);
@@ -98,8 +102,8 @@ pub extern "C" fn luaopen_lssl(L: *mut lua_State) -> i32 {
     luakit::set_function!(lssl, "b64_encode", |input: &[u8]| -> String {
         BASE64_STANDARD.encode(input)
     });
-    luakit::set_function!(lssl, "b64_decode", |input: &[u8]| -> Vec<u8> {
-        BASE64_STANDARD.decode(input).unwrap()
+    luakit::set_function!(lssl, "b64_decode", |input: String| -> Vec<u8> {
+        BASE64_STANDARD.decode(preprocess(&input)).unwrap()
     });
     luakit::set_function!(lssl, "md5", |input : &[u8], hex: bool| -> Vec<u8> {
         let mut hasher = Md5::new();

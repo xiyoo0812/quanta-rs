@@ -9,6 +9,7 @@ edition = "2021"
 crate-type =["cdylib"]
 
 [dependencies]
+pem = "3.0.4"
 rand = "0.8.5"
 md-5 = "0.10.6"
 ring = "0.17.8"
