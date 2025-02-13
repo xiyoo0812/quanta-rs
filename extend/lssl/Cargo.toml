@@ -9,10 +9,16 @@ edition = "2021"
 crate-type =["cdylib"]
 
 [dependencies]
-rand = "0.9.0"
+pem = "3.0.4"
+crc = "3.2.1" #
+lz4 = "1.28.1"
+zstd = "0.13.2"
+rand = "0.8.5"
 md-5 = "0.10.6"
 ring = "0.17.8"
+xxtea = "0.2.0"
 libc = "0.2.169"
-base64ct = "1.6.0"
+base64  = "0.22.1"
+rsa = { version = "0.9.7", features = ["sha2"] } # 请根据实际情况调整版本号
 lua = { path = "../lua"}
 luakit = { path = "../luakit"}

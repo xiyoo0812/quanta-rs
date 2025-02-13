@@ -4,7 +4,7 @@
 use luakit::LuaGc;
 
 const MAX_BITSET_SIZE: usize = 1024;
-static BITHEX: &[u8] = &[b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', b'a', b'b', b'c', b'd', b'e', b'f'];
+static BITHEX: &[u8] = b"0123456789ABCDEF";
 
 pub struct BitSet {
     m_bits: Vec<bool>,

@@ -34,7 +34,7 @@ static SERIAL_INDEX_TABLE: Lazy<Arc<Mutex<Vec<u32>>>> = Lazy::new(||{
     Arc::new(Mutex::new(indexs))
 });
 
-const LETTERS: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+const LETTERS: &[u8] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
 pub fn guid_new(group: u32, index: u32) -> u64 {
     let group = ternary!(group == 0, rand::random::<u32>() % MAX_GROUP, group % MAX_GROUP);
@@ -78,7 +78,7 @@ pub fn guid_encode(val: u64) -> Vec<u8> {
     let mut val = val;
     let mut tmp: Vec<u8> = vec!['\0' as u8; LETTER_LEN];
     for i in 0..LETTER_LEN - 1 {
-        tmp[i] = LETTERS.chars().nth((val % LETTER_SIZE) as usize).unwrap() as u8;
+        tmp[i] = LETTERS[(val % LETTER_SIZE) as usize];
         val /= LETTER_SIZE;
         if val == 0 {
             break;

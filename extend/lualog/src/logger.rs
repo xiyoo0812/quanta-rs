@@ -4,15 +4,15 @@
 
 use std::thread;
 use std::process;
-use std::thread::JoinHandle;
 use lua::ternary;
+use dashmap::DashMap;
 use std::path::PathBuf;
 use std::time::Duration;
-use std::collections::HashMap;
+use std::thread::JoinHandle;
 use std::sync::{ Arc, Mutex };
-use std::fs:: { self, OpenOptions };
+use std::fs::{ self, OpenOptions };
 use memmap2::{ MmapOptions, MmapMut };
-use chrono::{ DateTime, Datelike, Timelike, Utc };
+use chrono::{ Local, DateTime, Datelike, Timelike };
 
 const QUEUE_SIZE: usize = 10000;
 const PAGE_SIZE: usize  = 65536;
@@ -76,26 +76,34 @@ struct FileDest {
     rolling_type: u32,
     ignore_suffix: bool,
     ignore_prefix: bool,
-    time: DateTime<Utc>,
+    time: DateTime<Local>,
     mapbuf: Option<MmapMut>,
 }
 
 impl FileDest {
-    pub fn new(path: PathBuf, feature: &str, sz: usize, rtype: u32) -> FileDest {
+    pub fn new() -> FileDest {
         FileDest {
             size: 0,
             mapbuf: None,
-            max_size: sz,
             alloc_size: 0,
-            time: Utc::now(),
-            rolling_type: rtype,
-            feature: feature.to_string(),
-            file_path: PathBuf::from(""),
+            time: Local::now(),
+            max_size: MAX_SIZE,
             clean_time: CLEAN_TIME,
+            rolling_type: RollingType::DAYLY as u32,
+            file_path: PathBuf::from(""),
+            log_path: PathBuf::from(""),
+            feature: "".to_string(),
             ignore_prefix: false,
             ignore_suffix: true,
-            log_path: path,
         }
+    }
+
+    fn setup(&mut self, path: PathBuf, feature: &str, sz: usize, rtype: u32, clean_time: u64) {
+        self.max_size = sz;
+        self.log_path = path;
+        self.rolling_type = rtype;
+        self.clean_time = clean_time;
+        self.feature = feature.to_string();
     }
 
     fn check_full(&self) -> bool {
@@ -103,7 +111,7 @@ impl FileDest {
     }
 
     fn new_log_file_name(&self, log: &LogMessage) ->String {
-        format!("{}-{}.{:03}.p{}.log", self.feature, log.time.format("%Y-%m-%d-%H%M%S"), log.time.timestamp_subsec_millis(), process::id())
+        format!("{}-{}.{:03}.p{}.log", self.feature, log.time.format("%Y%m%d-%H%M%S"), log.time.timestamp_subsec_millis(), process::id())
     }
 
     fn unmap_file(&mut self,){
@@ -144,7 +152,7 @@ impl FileDest {
     pub fn create(&mut self, file_name: String) {
         self.unmap_file();
         self.size = 0;
-        self.time = Utc::now();
+        self.time = Local::now();
         self.alloc_size = PAGE_SIZE;
         self.file_path = self.log_path.join(file_name);
         self.map_file();
@@ -192,16 +200,16 @@ struct LogMessage {
     pub msg: String,
     pub source: String,
     pub feature: String,
-    pub time: DateTime<Utc>,
+    pub time: DateTime<Local>,
 }
 
 impl LogMessage {
-    pub fn new() -> LogMessage {
+    pub fn new(grow: bool) -> LogMessage {
         LogMessage {
             line: 0,
             level: 0,
-            grow: false,
-            time: Utc::now(),
+            grow: grow,
+            time: Local::now(),
             tag: "".to_string(),
             msg: "".to_string(),
             source: "".to_string(),
@@ -215,7 +223,7 @@ impl LogMessage {
             self.msg = msg;
             self.level = level;
             self.feature = feature;
-            self.time = Utc::now();
+            self.time = Local::now();
             self.source = source.to_string();
     }
 
@@ -224,80 +232,78 @@ impl LogMessage {
     }
 }
 
-type MessageList = Vec<Arc<Mutex<LogMessage>>>;
-
 struct LogMessagePool {
-    free_messages: Arc<Mutex<MessageList>>,
-    alloc_messages: Arc<Mutex<MessageList>>,
+    mutex: Mutex<()>,
+    free_messages: Vec<LogMessage>,
+    alloc_messages: Vec<LogMessage>,
 }
 
 impl LogMessagePool  {
     pub fn new() -> LogMessagePool  {
         LogMessagePool {
-            free_messages: Arc::new(Mutex::new(Vec::with_capacity(QUEUE_SIZE))),
-            alloc_messages: Arc::new(Mutex::new(Vec::with_capacity(QUEUE_SIZE))),
+            mutex: Mutex::new(()),
+            free_messages: Vec::new(),
+            alloc_messages: Vec::new(),
         }
     }
 
     pub fn init(&mut self) {
         for _ in 0..QUEUE_SIZE {
-            self.alloc_messages.lock().unwrap().push(Arc::new(Mutex::new(LogMessage::new())));
+            self.alloc_messages.push(LogMessage::new(false));
         }
     }
 
-    pub fn allocate(&mut self) -> Arc<Mutex<LogMessage>> {
-        let mut alloc_vec = self.alloc_messages.lock().unwrap();
-        if !alloc_vec.is_empty() {
-            return alloc_vec.pop().unwrap();
+    pub fn allocate(&mut self) -> LogMessage {
+        if self.alloc_messages.is_empty() {
+            let _g = self.mutex.lock();
+            std::mem::swap(&mut self.alloc_messages, &mut self.free_messages);
         }
-        let mut free_vec = self.free_messages.lock().unwrap();
-        if free_vec.is_empty() {
-            let mut msg = LogMessage::new();
-            msg.set_grow(true);
-            return Arc::new(Mutex::new(msg));
+        if self.alloc_messages.is_empty() {
+            return LogMessage::new(true);
         }
-        std::mem::swap(&mut *free_vec, &mut *alloc_vec);
-        alloc_vec.pop().unwrap()
+        let _g = self.mutex.lock();
+        self.alloc_messages.pop().unwrap()
     }
 
-    pub fn release(&mut self, msg : Arc<Mutex<LogMessage>>) {
-        if !msg.lock().unwrap().grow {
-            let mut free_vec = self.free_messages.lock().unwrap();
-            free_vec.push(msg);
+    pub fn release(&mut self, msg : LogMessage) {
+        if !msg.grow {
+            let _g = self.mutex.lock();
+            self.free_messages.push(msg);
         }
     }
 }
 
+type MessageList = Vec<LogMessage>;
 struct LogMessageQueue {
-    read_messages: Arc<Mutex<MessageList>>,
-    write_messages: Arc<Mutex<MessageList>>,
+    mutex: Mutex<()>,
+    read_messages: Vec<LogMessage>,
+    write_messages: Vec<LogMessage>,
 }
 
 impl LogMessageQueue  {
     pub fn new() -> LogMessageQueue  {
         LogMessageQueue {
-            read_messages: Arc::new(Mutex::new(Vec::new())),
-            write_messages: Arc::new(Mutex::new(Vec::new())),
+            mutex: Mutex::new(()),
+            read_messages: Vec::new(),
+            write_messages: Vec::new(),
         }
     }
 
-    pub fn put(&mut self, logmsg: Arc<Mutex<LogMessage>>) {
-        let mut write_vec = self.write_messages.lock().unwrap();
-        write_vec.push(logmsg);
+    pub fn put(&mut self, logmsg: LogMessage) {
+        let _g = self.mutex.lock();
+        self.write_messages.push(logmsg);
     }
 
-    pub fn timed_getv(&mut self) -> Arc<Mutex<MessageList>> {
+    pub fn timed_getv(&mut self) ->&Vec<LogMessage> {
         {
-            let mut read_vec = self.read_messages.lock().unwrap();
-            let mut write_vec  = self.write_messages.lock().unwrap();
-            read_vec.clear();
-            std::mem::swap(&mut *read_vec, &mut *write_vec);
+            self.read_messages.clear();
+            let _g = self.mutex.lock();
+            std::mem::swap(&mut self.read_messages, &mut self.write_messages);
         }
-        let read_vec = self.read_messages.lock().unwrap();
-        if read_vec.is_empty() {
+        if self.read_messages.is_empty() {
             thread::sleep(Duration::from_millis(5));
         }
-        self.read_messages.clone()
+        &self.read_messages
     }
 }
 
@@ -305,12 +311,11 @@ pub struct LogService {
     path: String,
     service: String,
     rolling_type: u32,
+    main_dest: FileDest,
     logmsgque: LogMessageQueue,
     messagepool: LogMessagePool,
-    stop_msg: Arc<Mutex<LogMessage>>,
-    dest_lvls: Mutex<HashMap<u32, Arc<Mutex<FileDest>>>>,
-    dest_features: Mutex<HashMap<String, Arc<Mutex<FileDest>>>>,
-    def_dest: Option<Arc<Mutex<FileDest>>>,
+    dest_lvls: DashMap<u32, FileDest>,
+    dest_features: DashMap<String, FileDest>,
     thread_handle: Option<JoinHandle<()>>,
     std_dest: StdDest,
     filter_bits: i32,
@@ -325,26 +330,26 @@ impl LogService {
             std_dest: StdDest,
             path: "".to_string(),
             service: "".to_string(),
+            dest_lvls: DashMap::new(),
+            dest_features: DashMap::new(),
             logmsgque: LogMessageQueue::new(),
             messagepool: LogMessagePool::new(),
-            dest_lvls: Mutex::new(HashMap::new()),
-            dest_features: Mutex::new(HashMap::new()),
-            stop_msg: Arc::new(Mutex::new(LogMessage::new())),
             rolling_type: RollingType::DAYLY as u32,
+            main_dest: FileDest::new(),
             clean_time: CLEAN_TIME,
             thread_handle: None,
             max_size: MAX_SIZE,
-            def_dest: None,
             filter_bits: -1,
             daemon: false,
         }
     }
 
     pub fn start(&mut self) {
+        self.messagepool.init();
     }
 
     pub fn stop(&mut self) {
-        self.logmsgque.put(self.stop_msg.clone());
+        self.logmsgque.put(LogMessage::new(false));
         if self.thread_handle.is_some() {
             self.thread_handle.take().unwrap().join().unwrap();
         }
@@ -352,15 +357,19 @@ impl LogService {
 
     pub fn option(&mut self, logger: Arc<Mutex<LogService>>, path: String, service: String, index: String) {
         self.path = path.clone();
-        self.messagepool.init();
-        self.service = format!("{}-{}", service, index);
-        let _ = fs::create_dir_all(path);
-        self.add_dest(service);
+        self.add_main_dest(&service, &index);
         if self.thread_handle.is_none() {
             self.thread_handle = Some(thread::spawn(|| {
                 LogService::run(logger);
             }));
         }
+    }
+
+    pub fn add_main_dest(&mut self, service: &str, index: &str) {
+        let _ = fs::create_dir_all(&self.path);
+        self.service = format!("{}-{}", service, index);
+        let logpath = self.build_path(&self.service);
+        self.main_dest.setup(logpath, service, self.max_size, self.rolling_type, self.clean_time);
     }
 
     pub fn daemon(&mut self, status: bool) {
@@ -391,29 +400,20 @@ impl LogService {
     }
 
     pub fn set_dest_clean_time(&mut self, feature: String, clean_time: u64) {
-        let dest_features = self.dest_features.lock().unwrap();
-        let dest = dest_features.get(&feature);
-        if dest.is_some() {
-            let dest = dest.unwrap();
-            dest.lock().unwrap().set_clean_time(clean_time);
+        if let Some(mut dest) = self.dest_features.get_mut(&feature) {
+           dest.set_clean_time(clean_time)
         }
     }
 
     pub fn ignore_prefix(&mut self, feature: String, prefix: bool) {
-        let dest_features = self.dest_features.lock().unwrap();
-        let dest = dest_features.get(&feature);
-        if dest.is_some() {
-            let dest = dest.unwrap();
-            dest.lock().unwrap().ignore_prefix(prefix);
+        if let Some(mut dest) = self.dest_features.get_mut(&feature) {
+           dest.ignore_prefix(prefix);
         }
     }
 
     pub fn ignore_suffix(&mut self, feature: String, suffix: bool) {
-        let dest_features = self.dest_features.lock().unwrap();
-        let dest = dest_features.get(&feature);
-        if dest.is_some() {
-            let dest = dest.unwrap();
-            dest.lock().unwrap().ignore_suffix(suffix);
+        if let Some(mut dest) = self.dest_features.get_mut(&feature) {
+            dest.ignore_suffix(suffix);
         }
     }
 
@@ -426,93 +426,83 @@ impl LogService {
         }
         path
     }
-
+    
     pub fn add_dest(&mut self, feature: String) {
-        let mut dest_features = self.dest_features.lock().unwrap();
-        if !dest_features.contains_key(&feature) {
+        if !self.dest_features.contains_key(&feature) {
+            let mut dest = FileDest::new();
             let path = self.build_path(&feature);
-            let dest = Arc::new(Mutex::new(FileDest::new(path, &feature, self.max_size, self.rolling_type)));
-            dest_features.insert(feature.clone(), dest.clone());
-            if self.def_dest.is_none() {
-                self.def_dest = Some(dest);
-            }
+            dest.setup(path, &feature, self.max_size, self.rolling_type, self.clean_time);
+            self.dest_features.insert(feature, dest);
         }
     }
 
     pub fn add_file_dest(&mut self, feature: String, fname: String) {
-        let mut dest_features = self.dest_features.lock().unwrap();
-        if !dest_features.contains_key(&feature) {
+        if !self.dest_features.contains_key(&feature) {
             let path = self.build_path(&self.service);
             let _ = fs::create_dir_all(&path);
-            let mut filedest = FileDest::new(path, &feature, self.max_size, RollingType::NONE as u32);
-            filedest.create(fname);
-            filedest.ignore_prefix(true);
-            dest_features.insert(feature.clone(), Arc::new(Mutex::new(filedest)));
+            let mut dest = FileDest::new();
+            dest.setup(path, &feature, self.max_size, RollingType::NONE as u32, self.clean_time);
+            dest.create(fname);
+            dest.ignore_prefix(true);
+            self.dest_features.insert(feature.clone(), dest);
         }
     }
     
     pub fn add_lvl_dest(&mut self, level: u32) {
-        let mut dest_lvls = self.dest_lvls.lock().unwrap();
-        if !dest_lvls.contains_key(&level) {
+        if !self.dest_lvls.contains_key(&level) {
             let mut feature = LEVEL_NAMES[level as usize].to_string();
             feature.make_ascii_lowercase();
             let mut path = self.build_path(&self.service);
             path.push(&feature);
-            let dest = Arc::new(Mutex::new(FileDest::new(path, &feature, self.max_size, self.rolling_type)));
-            dest_lvls.insert(level, dest.clone());
+            let mut dest = FileDest::new();
+            dest.setup(path, &feature, self.max_size, self.rolling_type, self.clean_time);
+            self.dest_lvls.insert(level, dest);
         }
     }
 
     pub fn del_dest(&mut self, feature: String) {
-        let mut dest_features = self.dest_features.lock().unwrap();
-        if dest_features.contains_key(&feature) {
-            dest_features.remove(&feature);
-        }
+        self.dest_features.remove(&feature);
     }
 
     pub fn del_lvl_dest(&mut self, log_lvl: u32) {
-        let mut dest_lvls = self.dest_lvls.lock().unwrap();
-        if dest_lvls.contains_key(&log_lvl) {
-            dest_lvls.remove(&log_lvl);
-        }
+        self.dest_lvls.remove(&log_lvl);
     }
 
     pub fn output(&mut self, level: u32, msg: &String, tag: String, feature: String, source: &str, line: i32) {
         if !self.is_filter(level) {
-            let message = self.messagepool.allocate();
-            message.lock().unwrap().option(level, msg.to_string(), tag, feature, source, line);
-            self.logmsgque.put(message.clone());
+            let mut message = self.messagepool.allocate();
+            message.option(level, msg.to_string(), tag, feature, source, line);
+            self.logmsgque.put(message);
         }
     }
 
+    pub fn update(&mut self) -> bool {
+        let logmsgs = self.logmsgque.timed_getv();
+        for log in logmsgs.iter() {
+            if log.level == 0 {
+                return false
+            }
+            if !self.daemon {
+                self.std_dest.write(&log);
+            }
+            if let Some(mut dest) = self.dest_lvls.get_mut(&log.level) {
+                dest.write(&log);
+            }
+            if let Some(mut dest) = self.dest_features.get_mut(&log.feature) {
+                dest.write(&log);
+            } else {
+                self.main_dest.write(&log);
+            }
+        }
+        true
+    }
+
     pub fn run(log_service: Arc<Mutex<LogService>>) {
-        let mut running = true;
         thread::sleep(Duration::from_millis(100));
-        while running {
-            let mut logger = log_service.lock().unwrap();
-            let list = logger.logmsgque.timed_getv();
-            let logmsgs = list.lock().unwrap();
-            for logmsg in logmsgs.iter() {
-                let log = logmsg.lock().unwrap();
-                if log.level == 0 {
-                    running = false;
-                    continue;
-                }
-                if !logger.daemon {
-                    logger.std_dest.write(&log);
-                }
-                let dest_lvls = logger.dest_lvls.lock().unwrap();
-                let lv_dest = dest_lvls.get(&log.level);
-                if lv_dest.is_some() {
-                    lv_dest.unwrap().lock().unwrap().write(&log);
-                }
-                let dest_features = logger.dest_features.lock().unwrap();
-                let fea_dest = dest_features.get(&log.feature);
-                if fea_dest.is_some() {
-                    fea_dest.unwrap().lock().unwrap().write(&log);
-                } else {
-                    let def_dest = logger.def_dest.clone();
-                    def_dest.unwrap().lock().unwrap().write(&log);
+        loop {
+            if let Ok(mut logger) = log_service.lock() {
+                if !logger.update() {
+                    break;
                 }
             }
         }
