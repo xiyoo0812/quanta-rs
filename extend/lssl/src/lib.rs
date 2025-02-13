@@ -54,6 +54,18 @@ fn randomkey(size: usize, hex: bool) -> Vec<u8> {
     }
 }
 
+fn md5(input: &[u8], hex: bool) -> Vec<u8> {
+    let mut hasher = Md5::new();
+    hasher.update(input);
+    let bytes = hasher.finalize().to_vec();
+    if hex {
+        to_hex(&bytes).as_bytes().to_vec()
+    } else {
+        bytes
+    }
+}
+
+
 macro_rules! ssl_sha_impl {
     ($method:ident, $input:expr) => {{
         let mut ctx = Context::new(&$method);
@@ -87,6 +99,7 @@ fn preprocess(s: &str) -> String {
 pub extern "C" fn luaopen_lssl(L: *mut lua_State) -> i32 {
     let mut kit = Luakit::load(L);
     let mut lssl = kit.new_table(Some("ssl"));
+    luakit::set_function!(lssl, "md5", md5);
     luakit::set_function!(lssl, "randomkey", randomkey);
     luakit::set_function!(lssl, "hex_decode", from_hex);
     luakit::set_function!(lssl, "hex_encode", |input: &[u8]| to_hex(input));
@@ -96,36 +109,25 @@ pub extern "C" fn luaopen_lssl(L: *mut lua_State) -> i32 {
     luakit::set_function!(lssl, "hmac_sha256", |key: &[u8], val: &[u8]| ssl_hmac_impl!(HMAC_SHA256, key, val));
     luakit::set_function!(lssl, "hmac_sha512", |key: &[u8], val: &[u8]| ssl_hmac_impl!(HMAC_SHA512, key, val));
     luakit::set_function!(lssl, "hmac_sha1", |key: &[u8], val: &[u8]| ssl_hmac_impl!(HMAC_SHA1_FOR_LEGACY_USE_ONLY, key, val));
-    luakit::set_function!(lssl, "pbkdf2_sha1", |secret: &[u8], salt: &[u8], iter:u32| ssl_pbkdf2_impl!(PBKDF2_HMAC_SHA1, secret, salt, iter, SHA1_OUTPUT_LEN));
-    luakit::set_function!(lssl, "pbkdf2_sha256", |secret: &[u8], salt: &[u8], iter:u32| ssl_pbkdf2_impl!(PBKDF2_HMAC_SHA256, secret, salt, iter, SHA256_OUTPUT_LEN));
-    luakit::set_function!(lssl, "pbkdf2_sha512", |secret: &[u8], salt: &[u8], iter:u32| ssl_pbkdf2_impl!(PBKDF2_HMAC_SHA512, secret, salt, iter, SHA512_OUTPUT_LEN));
+    luakit::set_function!(lssl, "pbkdf2_sha1", |secret: &[u8], salt: &[u8], iter:u32| {
+        ssl_pbkdf2_impl!(PBKDF2_HMAC_SHA1, secret, salt, iter, SHA1_OUTPUT_LEN)
+    });
+    luakit::set_function!(lssl, "pbkdf2_sha256", |secret: &[u8], salt: &[u8], iter:u32| {
+        ssl_pbkdf2_impl!(PBKDF2_HMAC_SHA256, secret, salt, iter, SHA256_OUTPUT_LEN)
+    });
+    luakit::set_function!(lssl, "pbkdf2_sha512", |secret: &[u8], salt: &[u8], iter:u32| {
+        ssl_pbkdf2_impl!(PBKDF2_HMAC_SHA512, secret, salt, iter, SHA512_OUTPUT_LEN)
+    });
     luakit::set_function!(lssl, "b64_encode", |input: &[u8]| -> String {
         BASE64_STANDARD.encode(input)
     });
     luakit::set_function!(lssl, "b64_decode", |input: String| -> Vec<u8> {
         BASE64_STANDARD.decode(preprocess(&input)).unwrap()
     });
-    luakit::set_function!(lssl, "md5", |input : &[u8], hex: bool| -> Vec<u8> {
-        let mut hasher = Md5::new();
-        hasher.update(input);
-        let bytes = hasher.finalize().to_vec();
-        if hex {
-            to_hex(&bytes).as_bytes().to_vec()
-        } else {
-            bytes
-        }
-    });
-    luakit::set_function!(lssl, "rsa_pubkey", |pubkey: String| {
-        let mut key = LuaRsaKey::new();
-        key.init_pubkey(pubkey);
-        Box::new(key)
-    });
-    luakit::set_function!(lssl, "rsa_prikey", |prikey: String| {
-        let mut key = LuaRsaKey::new();
-        key.init_prikey(prikey);
-        Box::new(key)
-    });
+    luakit::set_function!(lssl, "rsa_key", || Box::new(LuaRsaKey::new()));
     luakit::new_class!(LuaRsaKey, lssl, "RsaKey",
+        "set_pubkey", LuaRsaKey::set_pubkey,
+        "set_prikey", LuaRsaKey::set_prikey,
         "encrypt", LuaRsaKey::encrypt,
         "decrypt", LuaRsaKey::decrypt,
         "verify", LuaRsaKey::verify,

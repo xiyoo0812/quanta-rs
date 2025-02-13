@@ -26,7 +26,7 @@ impl LuaRsaKey {
         LuaRsaKey { priv_key: None, pub_key: None }
     }
 
-    pub fn init_pubkey(&mut self, pkey: String) -> bool {
+    pub fn set_pubkey(&mut self, pkey: String) -> bool {
         let pem = parse(pkey.as_bytes()).unwrap();
         match RsaPublicKey::from_public_key_der(pem.contents()) {
             Ok(key) => {
@@ -40,7 +40,7 @@ impl LuaRsaKey {
         }
     }
 
-    pub fn init_prikey(&mut self, pkey: String) -> bool {
+    pub fn set_prikey(&mut self, pkey: String) -> bool {
         let pem = parse(pkey.as_bytes()).unwrap();
         match RsaPrivateKey::from_pkcs1_der(pem.contents()) {
             Ok(key) => {

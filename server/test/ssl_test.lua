@@ -97,16 +97,16 @@ J9rSdD3+UFNRBHrhyAv8xE0q2Diun8J6boOVhbhVknk=
 -----END RSA PRIVATE KEY-----
 ]]
 
-local pubkey = ssl.rsa_pubkey(pem_pub)
-local prikey = ssl.rsa_prikey(pem_pri)
+local prikey = ssl.rsa_key()
+prikey.set_prikey(pem_pri)
 
-local rsav1 = pubkey.encrypt(pem_pub)
+local rsav1 = prikey.encrypt(pem_pub)
 log_info("rsa_encrypt: {}, {}",  #rsav1, lhex_encode(rsav1))
 local rsav2 = prikey.decrypt(rsav1)
 log_info("rsa_decrypt: {}, {}",  #rsav2, rsav2)
 local rsav3 = prikey.sign(pem_pub)
 log_info("rsa_sign: {}, {}",  #rsav3, lhex_encode(rsav3))
-local rsav4 = pubkey.verify(pem_pub, rsav3)
+local rsav4 = prikey.verify(pem_pub, rsav3)
 log_info("rsa_verify: {}",  rsav4)
 
 --[[
