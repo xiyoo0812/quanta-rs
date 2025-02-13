@@ -12,9 +12,12 @@ use lua::lua_State;
 use base64::prelude::*;
 use std::num::NonZeroU32;
 use md5::{ Md5, Digest };
-use ring::hmac::{self, HMAC_SHA256, HMAC_SHA512, HMAC_SHA1_FOR_LEGACY_USE_ONLY };
-use ring::pbkdf2::{self, PBKDF2_HMAC_SHA1, PBKDF2_HMAC_SHA256, PBKDF2_HMAC_SHA512 };
-use ring::digest::{Context, SHA1_FOR_LEGACY_USE_ONLY, SHA256, SHA512, SHA1_OUTPUT_LEN, SHA256_OUTPUT_LEN, SHA512_OUTPUT_LEN};
+use zstd::stream::{ decode_all, encode_all };
+use lz4::block::{ compress, decompress, CompressionMode };
+use ring::hmac::{ self, HMAC_SHA256, HMAC_SHA512, HMAC_SHA1_FOR_LEGACY_USE_ONLY };
+use ring::pbkdf2::{ self, PBKDF2_HMAC_SHA1, PBKDF2_HMAC_SHA256, PBKDF2_HMAC_SHA512 };
+use crc::{Crc, CRC_8_LTE, CRC_16_XMODEM, CRC_32_ISO_HDLC, CRC_64_GO_ISO};
+use ring::digest:: {Context, SHA1_FOR_LEGACY_USE_ONLY, SHA256, SHA512, SHA1_OUTPUT_LEN, SHA256_OUTPUT_LEN, SHA512_OUTPUT_LEN};
 
 use luakit::{ Luakit, LuaPush, LuaPushFn, LuaPushFnMut };
 
@@ -65,6 +68,9 @@ fn md5(input: &[u8], hex: bool) -> Vec<u8> {
     }
 }
 
+fn preprocess(s: &str) -> String {
+    s.chars().filter(|c| !c.is_whitespace()).collect()
+}
 
 macro_rules! ssl_sha_impl {
     ($method:ident, $input:expr) => {{
@@ -91,8 +97,11 @@ macro_rules! ssl_pbkdf2_impl {
     }}
 }
 
-fn preprocess(s: &str) -> String {
-    s.chars().filter(|c| !c.is_whitespace()).collect()
+macro_rules! ssl_crc_impl {
+    ($bit:ident, $val:expr, $algm:expr) => {{
+        let crc = Crc::<$bit>::new(&$algm);
+        crc.checksum($val)
+    }}
 }
 
 #[no_mangle]
@@ -109,6 +118,10 @@ pub extern "C" fn luaopen_lssl(L: *mut lua_State) -> i32 {
     luakit::set_function!(lssl, "hmac_sha256", |key: &[u8], val: &[u8]| ssl_hmac_impl!(HMAC_SHA256, key, val));
     luakit::set_function!(lssl, "hmac_sha512", |key: &[u8], val: &[u8]| ssl_hmac_impl!(HMAC_SHA512, key, val));
     luakit::set_function!(lssl, "hmac_sha1", |key: &[u8], val: &[u8]| ssl_hmac_impl!(HMAC_SHA1_FOR_LEGACY_USE_ONLY, key, val));
+    luakit::set_function!(lssl, "crc8", |input: &[u8]| ssl_crc_impl!(u8, input, CRC_8_LTE));
+    luakit::set_function!(lssl, "crc16", |input: &[u8]| ssl_crc_impl!(u16, input, CRC_16_XMODEM));
+    luakit::set_function!(lssl, "crc32", |input: &[u8]| ssl_crc_impl!(u32, input, CRC_32_ISO_HDLC));
+    luakit::set_function!(lssl, "crc64", |input: &[u8]| ssl_crc_impl!(u64, input, CRC_64_GO_ISO));
     luakit::set_function!(lssl, "pbkdf2_sha1", |secret: &[u8], salt: &[u8], iter:u32| {
         ssl_pbkdf2_impl!(PBKDF2_HMAC_SHA1, secret, salt, iter, SHA1_OUTPUT_LEN)
     });
@@ -123,6 +136,27 @@ pub extern "C" fn luaopen_lssl(L: *mut lua_State) -> i32 {
     });
     luakit::set_function!(lssl, "b64_decode", |input: String| -> Vec<u8> {
         BASE64_STANDARD.decode(preprocess(&input)).unwrap()
+    });
+    luakit::set_function!(lssl, "lz4_encode", |input: &[u8]| -> Vec<u8> {
+        compress(input, Some(CompressionMode::DEFAULT), true).unwrap()
+    });
+    luakit::set_function!(lssl, "lz4_decode", |input: &[u8]| -> Vec<u8> {
+        decompress(&input, None).unwrap()
+    });
+    luakit::set_function!(lssl, "zstd_encode", |input: &[u8]| -> Vec<u8> {
+        encode_all(input, 3).unwrap()
+    });
+    luakit::set_function!(lssl, "zstd_decode", |input: &[u8]| -> Vec<u8> {
+        decode_all(input).unwrap()
+    });
+    luakit::set_function!(lssl, "xxtea_encode", |input: Vec<u8>, key: String| -> Vec<u8> {
+        xxtea::encrypt_raw(&input, &key)
+    });
+    luakit::set_function!(lssl, "xxtea_decode", |input: Vec<u8>, key: String| -> Vec<u8> {
+        xxtea::decrypt_raw(&input, &key)
+    });
+    luakit::set_function!(lssl, "lxor_byte", |s1:&[u8], s2:&[u8]| -> Vec<u8> {
+        s1.iter().zip(s2.iter()).map(|(&a, &b)| a ^ b).collect()
     });
     luakit::set_function!(lssl, "rsa_key", || Box::new(LuaRsaKey::new()));
     luakit::new_class!(LuaRsaKey, lssl, "RsaKey",

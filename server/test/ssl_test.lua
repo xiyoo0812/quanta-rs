@@ -13,7 +13,6 @@ local lsha1         = ssl.sha1
 local lsha256       = ssl.sha256
 local lsha512       = ssl.sha512
 
-local crc8          = ssl.crc8
 local lhmac_sha1    = ssl.hmac_sha1
 local lhmac_sha256  = ssl.hmac_sha256
 local lhmac_sha512  = ssl.hmac_sha512
@@ -21,55 +20,55 @@ local lhmac_sha512  = ssl.hmac_sha512
 local pbkdf2_sha1   = ssl.pbkdf2_sha1
 local pbkdf2_sha256 = ssl.pbkdf2_sha256
 
--- --base64
--- local ran = lrandomkey(12, true)
--- log_info("lrandomkey-> ran: {}", ran)
--- local text = "aTmEiujIXS9aezbfaADYGd5fFr2ExUPvw9t0Pijxjw8WMCQQDDsGLBH4RTQwPe"
--- local nonce = lb64encode(text)
--- local dnonce = lb64decode(nonce)
--- log_info("b64encode-> nonce: {}, dnonce:{}", nonce, dnonce)
+--base64
+local ran = lrandomkey(12, true)
+log_info("lrandomkey-> ran: {}", ran)
+local text = "aTmEiujIXS9aezbfaADYGd5fFr2ExUPvw9t0Pijxjw8WMCQQDDsGLBH4RTQwPe"
+local nonce = lb64encode(text)
+local dnonce = lb64decode(nonce)
+log_info("b64encode-> nonce: {}, dnonce:{}", nonce, dnonce)
 
--- --sha
--- local value = "123456779"
--- local sha1 = lhex_encode(lsha1(value))
--- log_info("sha1: {}", sha1)
--- local sha256 = lhex_encode(lsha256(value))
--- log_info("sha256: {}", sha256)
--- local sha512 = lhex_encode(lsha512(value))
--- log_info("sha512: {}", sha512)
+--sha
+local value = "123456779"
+local sha1 = lhex_encode(lsha1(value))
+log_info("sha1: {}", sha1)
+local sha256 = lhex_encode(lsha256(value))
+log_info("sha256: {}", sha256)
+local sha512 = lhex_encode(lsha512(value))
+log_info("sha512: {}", sha512)
 
--- --md5
--- local omd5 = lmd5(value)
--- local nmd5 = lmd5(value, true)
--- local hmd5 = lhex_encode(omd5)
--- log_info("omd5: {}, hmd5: {}", nmd5, hmd5)
+--md5
+local omd5 = lmd5(value)
+local nmd5 = lmd5(value, true)
+local hmd5 = lhex_encode(omd5)
+log_info("md5: {}", nmd5)
+log_info("omd5: {}, hmd5: {}", omd5, hmd5)
 
+--hmac_sha
+local key = "1235456"
+local hmac_sha1 = lhex_encode(lhmac_sha1(key, value))
+log_info("hmac_sha1: {}", hmac_sha1)
+local hmac_sha256 = lhex_encode(lhmac_sha256(key, value))
+log_info("hmac_sha256: {}", hmac_sha256)
+local hmac_sha512 = lhex_encode(lhmac_sha512(key, value))
+log_info("hmac_sha512: {}", hmac_sha512)
 
--- --hmac_sha
--- local key = "1235456"
--- local hmac_sha1 = lhex_encode(lhmac_sha1(key, value))
--- log_info("hmac_sha1: {}", hmac_sha1)
--- local hmac_sha256 = lhex_encode(lhmac_sha256(key, value))
--- log_info("hmac_sha256: {}", hmac_sha256)
--- local hmac_sha512 = lhex_encode(lhmac_sha512(key, value))
--- log_info("hmac_sha512: {}", hmac_sha512)
+local username = "abcdefg"
+local passwd = "123456"
+local salt = "U7efME3FYncgKHd9LP0LPg=="
+local sha1_key = lmd5(sformat("%s:mongo:%s", username, passwd), 1)
+local salt_sha1 = lhex_encode(pbkdf2_sha1(sha1_key, salt, 10000))
+log_info("pbkdf2_sha1: {}", salt_sha1)
+local salt_sha256 = lhex_encode(pbkdf2_sha256(passwd, salt, 10000))
+log_info("pbkdf2_sha256: {}", salt_sha256)
 
--- local username = "abcdefg"
--- local passwd = "123456"
--- local salt = "U7efME3FYncgKHd9LP0LPg=="
--- local sha1_key = lmd5(sformat("%s:mongo:%s", username, passwd), 1)
--- local salt_sha1 = lhex_encode(pbkdf2_sha1(sha1_key, salt, 10000))
--- log_info("pbkdf2_sha1: {}", salt_sha1)
--- local salt_sha256 = lhex_encode(pbkdf2_sha256(passwd, salt, 10000))
--- log_info("pbkdf2_sha256: {}", salt_sha256)
+log_info("crc8: {}", ssl.crc8("123214345345345"))
+log_info("crc8: {}", ssl.crc16("dfsdfsdfsdfgsdg"))
+log_info("crc8: {}", ssl.crc32("2213weerwbdfgd"))
+log_info("crc8: {}", ssl.crc64("++dsfsdf++gbdfgdfg"))
 
---[[
-log_info("crc8: {}", crc8("123214345345345"))
-log_info("crc8: {}", crc8("dfsdfsdfsdfgsdg"))
-log_info("crc8: {}", crc8("2213weerwbdfgd"))
-log_info("crc8: {}", crc8("++dsfsdf++gbdfgdfg"))
-]]
 --rsa
+
 local pem_pub = [[
 -----BEGIN RSA PUBLIC KEY-----
 MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC8iJ4Qgsxxn17YuV+MJYhjovE9
@@ -109,7 +108,6 @@ log_info("rsa_sign: {}, {}",  #rsav3, lhex_encode(rsav3))
 local rsav4 = prikey.verify(pem_pub, rsav3)
 log_info("rsa_verify: {}",  rsav4)
 
---[[
 local data = {}
 for i = 1, 200 do
     data[i] = {
@@ -149,4 +147,3 @@ for i = 1, 20000 do
     ssl.lz4_decode(lz4c)
 end
 log_info("lz4_decode: {}=>{}",  #lz4d, timer.now_ms() - s2)
-]]
