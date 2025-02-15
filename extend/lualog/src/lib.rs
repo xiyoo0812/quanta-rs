@@ -45,7 +45,7 @@ fn read_args(L: *mut lua_State, flag: int, index: int) -> String {
         }
         lua::LUA_TTABLE => {
             if (flag & LOG_FLAG_FORMAT) == LOG_FLAG_FORMAT {
-                return lua::to_utf8(lua::lua_tolstring(L, index));
+                return lua::to_utf8(lua::lua_tostring(L, index));
             }
             lua::to_utf8(lua::lua_tostring(L, index))
         } 

@@ -1,0 +1,19 @@
+[package]
+name = "luapb"
+version = "0.1.0"
+build = "build.rs"
+edition = "2021"
+links = "pb"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type =["cdylib"]
+
+[build-dependencies]
+cc = "1.2.6"
+
+[dependencies]
+libc = "0.2.169"
+lua = { path = "../lua"}
+luakit = { path = "../luakit"}

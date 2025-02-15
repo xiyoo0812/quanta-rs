@@ -94,6 +94,17 @@ impl LuaRead for Vec<u8>{
     }
 }
 
+impl<T> LuaPush for Option<T> where T: LuaPush {
+    fn native_to_lua(self, L: *mut lua_State) -> i32 {
+        if let Some(val) = self {
+            val.native_to_lua(L)
+        } else {
+            unsafe { lua::lua_pushnil(L) };
+            1
+        }
+    }
+}
+
 impl LuaPush for &[u8]{
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
         let buf = self.as_ptr() as *const i8;

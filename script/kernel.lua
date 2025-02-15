@@ -20,8 +20,8 @@ local function init_library()
     --加载扩展库
     require("lssl")
     require("ljson")
+    require("luapb")
     require("lcodec")
-    -- require("luapb")
     -- require("lbson")
     --加载基础库
     import("kernel/thread_mgr.lua")
@@ -32,15 +32,15 @@ end
 
 --初始化网络
 local function init_network()
-    require("luabus")
-    local max_conn = environ.number("QUANTA_MAX_CONN", 64)
-    socket_mgr = luabus.create_socket_mgr(max_conn)
-    quanta.socket_mgr = socket_mgr
+    -- require("luabus")
+    -- local max_conn = environ.number("QUANTA_MAX_CONN", 64)
+    -- socket_mgr = luabus.create_socket_mgr(max_conn)
+    -- quanta.socket_mgr = socket_mgr
     --加载协议
     import("kernel/protobuf_mgr.lua")
     --加载监控
-    import("driver/webhook.lua")
-    import("driver/loki.lua")
+    -- import("driver/webhook.lua")
+    -- import("driver/loki.lua")
 end
 
 --初始化loop
@@ -90,7 +90,7 @@ function quanta.main()
     --主循环
     init_mainloop()
     --网络
-    -- init_network()
+    init_network()
     --加载服务发现
     -- init_discover()
     --初始化store

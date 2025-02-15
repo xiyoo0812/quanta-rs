@@ -61,10 +61,10 @@ impl Quanta {
         }
     }
 
-    pub fn get_env(&mut self, key: &str) -> String {
+    pub fn get_env(&mut self, key: &str) -> Option<String> {
         match self.m_environs.get(key) {
-            Some(val) => val.clone(),
-            None => String::new(),
+            Some(val) => Some(val.clone()),
+            None => None,
         }
     }
 
@@ -164,34 +164,35 @@ impl Quanta {
         });
 
         //设置日志
-        let log_path = self.get_env("QUANTA_LOG_PATH");
-        if !log_path.is_empty() {
-            let index = self.get_env("QUANTA_INDEX");
-            let service = self.get_env("QUANTA_SERVICE");
-            unsafe { option_logger(to_char!(log_path), to_char!(service), to_char!(index)) };
+        if let Some(log_path) = self.get_env("QUANTA_LOG_PATH") {
+            if let Some(index) = self.get_env("QUANTA_INDEX") {
+                if let Some(service) = self.get_env("QUANTA_SERVICE") {
+                    unsafe { option_logger(to_char!(log_path), to_char!(service), to_char!(index)) };
+                }
+            }
         }
         //加载sandbox和entry
-        let sandbox = self.get_env("QUANTA_SANDBOX");
-        let entry = self.get_env("QUANTA_ENTRY");
-        if sandbox.is_empty() || entry.is_empty() {
-            println!("the sandbox or entry not found");
-            return false;
-        }
-        match self.m_lua.run_script(format!("require '{}'\0", sandbox)) {
-            Ok(_) => {},
-            Err(e) => {
-                println!("require sandbox Error: {}", e);
-                return false;
+        if let Some(sandbox) = self.get_env("QUANTA_SANDBOX") {
+            if let Some(entry) = self.get_env("QUANTA_ENTRY") {
+                match self.m_lua.run_script(format!("require '{}'\0", sandbox)) {
+                    Ok(_) => {},
+                    Err(e) => {
+                        println!("require sandbox Error: {}", e);
+                        return false;
+                    }
+                }
+                match self.m_lua.run_script(format!("require '{}'\0", entry)) {
+                    Ok(_) => {},
+                    Err(e) => {
+                        println!("require entry {} error: {}", entry, e);
+                        return false;
+                    }
+                }
+                return true;
             }
         }
-        match self.m_lua.run_script(format!("require '{}'\0", entry)) {
-            Ok(_) => {},
-            Err(e) => {
-                println!("require entry {} error: {}", entry, e);
-                return false;
-            }
-        }
-        return true;
+        println!("the sandbox or entry not found");
+        return false;
     }
 
     pub fn run(&mut self) {

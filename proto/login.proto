@@ -1,0 +1,188 @@
+syntax = "proto3";
+
+package ncmd_cs;
+
+//角色信息
+message role_info
+{
+    uint64 role_id              = 1;       // 角色id
+    string name                 = 2;       // 角色名字
+    uint32 gender               = 3;       // 角色性别
+    uint32 model                = 4;        // 模型ID
+}
+
+//平台定义
+enum platform_type
+{
+    PLATFORM_GUEST              = 0;        //游客
+    PLATFORM_PASSWORD           = 1;        //PASSWORD
+}
+
+//NID_LOGIN_ACCOUNT_LOGIN_REQ
+message login_account_login_req
+{
+    string openid               = 1;        // 第三方账号openid
+    string session              = 2;        // 第三方账号登陆验证session
+    platform_type platform      = 3;        // 平台类型
+    string device_id            = 9;        // 设备id
+}
+
+//NID_LOGIN_ACCOUNT_LOGIN_RES
+message login_account_login_res
+{
+    uint32 error_code           = 1;        // 错误码
+    uint64 user_id              = 2;        // 第三方账号openid
+    repeated role_info roles    = 3;        // 账号角色列表
+}
+
+//NID_LOGIN_ACCOUNT_RELOAD_REQ
+message login_account_reload_req
+{
+    string openid               = 1;        // 第三方账号openid
+    string session              = 2;        // 第三方账号登陆验证session
+    string device_id            = 3;        // 设备id
+}
+
+//NID_LOGIN_ACCOUNT_RELOAD_RES
+message login_account_reload_res
+{
+    uint32 error_code           = 1;        // 错误码
+    uint64 user_id              = 2;        // 角色账号ID
+    repeated role_info roles    = 3;        // 账号角色列表
+}
+
+//NID_LOGIN_RANDOM_NAME_REQ
+message login_random_name_req
+{
+}
+
+//NID_LOGIN_RANDOM_NAME_RES
+message login_random_name_res
+{
+    uint32 error_code           = 1;        // 错误码
+    string name                 = 2;        // 随机名字
+}
+
+//捏脸数据定义
+message rolemodel {
+    uint32 model                = 1;        // 模型ID
+    uint32 color                = 2;        // 肤色
+    uint32 head                 = 3;        // 头模ID
+}
+
+//NID_LOGIN_ROLE_CREATE_REQ
+message login_role_create_req
+{
+    uint64 user_id              = 1;        // 账号id
+    string name                 = 2;        // 名字
+    uint32 gender               = 3;        // 性别
+    bytes custom                = 4;        // 捏脸数据，rolemodel
+}
+
+//NID_LOGIN_ROLE_CREATE_RES
+message login_role_create_res
+{
+    uint32 error_code           = 1;        // 错误码
+    role_info role              = 2;        // 新角色信息
+}
+
+//NID_LOGIN_ROLE_CHOOSE_REQ
+message login_role_choose_req
+{
+    uint64 user_id              = 1;        // 账号id
+    uint64 role_id              = 2;        // 角色id
+}
+
+//NID_LOGIN_ROLE_CHOOSE_RES
+message login_role_choose_res
+{
+    uint32 error_code           = 1;        // 错误码
+    repeated string addrs       = 2;        // gateway ips
+    uint32 port                 = 3;        // gateway port
+    uint32 lobby                = 4;        // lobby id
+    uint32 token                = 5;        // 验证token
+    uint64 role_id              = 6;        // role_id
+}
+
+//NID_LOGIN_ROLE_DELETE_REQ
+message login_role_delete_req
+{
+    uint64 user_id              = 1;        // 账号id
+    uint64 role_id              = 2;        // 角色id
+}
+
+//NID_LOGIN_ROLE_DELETE_RES
+message login_role_delete_res
+{
+    uint32 error_code           = 1;        // 错误码
+}
+
+//NID_LOGIN_ROLE_LOGIN_REQ
+message login_role_login_req
+{
+    string open_id              = 1;        // open_id
+    uint64 role_id              = 2;        // 角色id
+    uint32 lobby                = 3;        // lobby id
+    uint32 token                = 4;        // 验证token
+}
+
+//NID_LOGIN_ROLE_LOGIN_RES
+message login_role_login_res
+{
+    uint32 error_code           = 1;        // 错误码
+    uint32 token                = 2;        // 重连token
+}
+
+//NID_LOGIN_ROLE_LOGOUT_REQ
+message login_role_logout_req
+{
+    uint64 role_id              = 1;        // 角色id
+}
+
+//NID_LOGIN_ROLE_LOGOUT_RES
+message login_role_logout_res
+{
+    uint32 error_code           = 1;        // 错误码
+}
+
+//NID_LOGIN_ROLE_RELOAD_REQ
+message login_role_reload_req
+{
+    string open_id              = 1;        // open_id
+    uint64 role_id              = 2;        // 角色id
+    uint32 lobby                = 3;        // lobby id
+    uint32 token                = 4;        // 验证token
+}
+
+//NID_LOGIN_ROLE_RELOAD_RES
+message login_role_reload_res
+{
+    uint32 error_code           = 1;        // 错误码
+    uint32 token                = 2;        // 重连token
+}
+
+//NID_LOGIN_ROLE_KICKOUT_NTF
+message login_role_kickout_ntf
+{
+    uint32 reason               = 1;        // 原因
+}
+
+//NID_ENTITY_ENTER_SCENE_NTF
+message entity_enter_scene_ntf
+{
+    uint64 id                   = 1;        // 实体id
+    uint64 scene_id             = 2;        // 场景实例id
+    uint32 type                 = 3;        // 实体类型
+    uint32 map_id               = 4;        // 场景id
+    int32 pos_x                 = 5;        // pos_x
+    int32 pos_y                 = 6;        // pos_y
+    int32 pos_z                 = 7;        // pos_z
+    int32 dir_y                 = 8;        // dir_y
+}
+
+//NID_ENTITY_LEAVE_SCENE_NTF
+message entity_leave_scene_ntf
+{
+    uint64 id                   = 1;        // 实体id
+    uint64 scene_id             = 2;        // 场景实例id
+}
