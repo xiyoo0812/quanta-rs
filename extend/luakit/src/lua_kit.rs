@@ -2,27 +2,45 @@
 #![allow(dead_code)]
 
 use std::env;
+use std::cell::RefCell;
 
 use lua::{ cstr, to_char, lua_State, lua_CFunction };
 
 use crate::lua_stack::*;
+use crate::lua_codec::*;
 use crate::lua_function::*;
+use crate::lua_buff::LuaBuf;
 use crate::lua_base::LuaGuard;
 use crate::lua_table::LuaTable;
 use crate::lua_reference::Reference;
+
 use crate::{ lua_set_function, call_table_warper, call_lua_warper, call_object_warper, call_function_inner };
 
 pub struct Luakit {
     m_L: *mut lua_State
 }
 
+thread_local! {
+    static LUA_BUFF: RefCell<LuaBuf> = RefCell::new(LuaBuf::new());
+}
+
+pub fn get_buff() -> &'static mut LuaBuf {
+    LUA_BUFF.with(|lua_buff| {
+        unsafe { &mut *lua_buff.as_ptr() }
+    })
+}
+
 impl Luakit {
     pub fn new() -> Luakit {
         unsafe {
             let L =  lua::luaL_newstate();
+            let mut kit = Luakit { m_L: L };
             lua::luaL_openlibs(L);
             lua::lua_checkstack(L, 1024);
-            Luakit { m_L: L }
+            let mut lkit = kit.new_table(Some("luakit"));
+            lkit.set_function("serialize", serialize);
+            lkit.set_function("unserialize", unserialize);
+            kit
         }
     }
 

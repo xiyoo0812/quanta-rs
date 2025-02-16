@@ -141,6 +141,10 @@ impl LuaBuf {
         Some(&mut self.data[start..start+need_len])
     }
 
+    pub fn data<'a>(&'a self) -> &'a [u8] {
+        &self.data
+    }
+
     pub fn string(&self) -> &str {
         unsafe { std::str::from_utf8_unchecked(&self.data[self.head..self.tail])}
     }

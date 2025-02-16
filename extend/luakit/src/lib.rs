@@ -10,6 +10,7 @@ pub mod lua_class;
 pub mod lua_stack;
 pub mod lua_table;
 pub mod lua_slice;
+pub mod lua_codec;
 pub mod lua_reference;
 
 #[macro_use]
@@ -23,5 +24,6 @@ pub use lua_class::*;
 pub use lua_stack::*;
 pub use lua_table::*;
 pub use lua_slice::*;
+pub use lua_codec::*;
 pub use lua_function::*;
 pub use lua_reference::*;

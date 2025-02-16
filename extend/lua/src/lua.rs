@@ -169,6 +169,8 @@ extern "C" {
     pub fn lua_toboolean_(L: *mut lua_State, idx: int) -> int;
     #[link_name = "lua_tolstring"]
     pub fn lua_tolstring_(L: *mut lua_State, idx: int, len: *mut size_t) -> *const char;
+    #[link_name = "luaL_tolstring"]
+    pub fn luaL_tolstring_(L: *mut lua_State, idx: int, len: *mut size_t) -> *const char;
     #[link_name = "luaL_checklstring"]
     pub fn luaL_checklstring_(L: *mut lua_State, arg: int, l: *mut size_t) -> *const char;
     #[link_name = "luaL_optlstring"]
@@ -376,6 +378,12 @@ pub fn lua_tostring<'a>(L: *mut lua_State, i: int) -> &'a [u8] {
 pub fn lua_tolstring<'a>(L: *mut lua_State, i: int) -> &'a [u8] {
     let mut size: size_t = 0;
     let cstr = unsafe { lua_tolstring_(L, i, &mut size) };
+    from_cstrlen(cstr, size)
+}
+
+pub fn luaL_tolstring<'a>(L: *mut lua_State, i: int) -> &'a [u8] {
+    let mut size: size_t = 0;
+    let cstr = unsafe { luaL_tolstring_(L, i, &mut size) };
     from_cstrlen(cstr, size)
 }
 

@@ -45,9 +45,12 @@ fn read_args(L: *mut lua_State, flag: int, index: int) -> String {
         }
         lua::LUA_TTABLE => {
             if (flag & LOG_FLAG_FORMAT) == LOG_FLAG_FORMAT {
-                return lua::to_utf8(lua::lua_tostring(L, index));
+                let buf = luakit::get_buff();
+                buf.clean();
+                luakit::serialize_one(L, buf, index, 1, (flag & LOG_FLAG_PRETTY) == LOG_FLAG_PRETTY);
+                return buf.string().to_string();
             }
-            lua::to_utf8(lua::lua_tostring(L, index))
+            lua::to_utf8(lua::luaL_tolstring(L, index))
         } 
         _ => "unsuppert data type".to_string(),
     }
