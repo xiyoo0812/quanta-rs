@@ -8,6 +8,7 @@ use libc::c_void as void;
 use lua::{ cstr, ternary, to_char, to_cptr, lua_State, to_utf8, to_string };
 
 use crate::lua_buff::LuaBuf;
+use crate::lua_slice::Slice;
 use crate::lua_base::LuaGuard;
 
 const TYPE_NIL: u8          = 0;
@@ -31,6 +32,14 @@ const MAX_ENCODE_DEPTH: u8  = 16;
 const MAX_SHARE_STRING: u8  = 128;
 const MAX_UINT8: u8         = 255 - TYPE_MAX;
 const MAX_STRING_SIZE: u32  = 0xffffff;
+
+// 错误类型定义
+#[derive(Debug)]
+pub enum CodecError {
+    BufferOverflow,
+    InvalidLength,
+    DecodeError(String),
+}
 
 fn serialize_value(buff: &mut LuaBuf, value: &[u8]) {
     buff.push_data(value);
@@ -189,3 +198,98 @@ pub fn unserialize(L: *mut lua_State) -> int {
         return 2;
     }
 }
+
+
+// 核心编解码trait
+pub trait Codec {
+    fn encode(&mut self, L: *mut lua_State, index: i32) -> Result<Vec<u8>, CodecError> {
+        Ok(vec![0])
+    }
+    fn decode(&mut self, L: *mut lua_State) -> Result<Vec<u8>, CodecError>{
+        Ok(vec![0])
+    }
+}
+
+// 基础编解码器实现
+pub struct BaseCodec<'a> {
+    error: String,
+    packet_len: i32,
+    buff: *mut LuaBuf,
+    slice: Slice<'a>,
+}
+
+impl<'a> BaseCodec<'a> {
+    pub fn new() -> Self {
+        Self {
+            packet_len: 0,
+            buff: ptr::null_mut(),
+            error: "".to_string(),
+            slice: Slice::attach(&[]),
+        }
+    }
+
+    pub fn load_packet(&mut self, data_len: i32) -> i32 {
+        if self.slice.is_empty() { return 0; }
+        if let Some(packet_len) = self.slice.read::<i32>() {
+            if packet_len > 0xffffff { return -1; }
+            if packet_len > data_len { return 0; }
+            if !self.slice.peek(packet_len as usize, 0).is_some() {
+                return 0;
+            }
+            self.packet_len = packet_len;
+            return packet_len;
+        }
+        0
+    }
+
+    pub fn set_buf(&mut self, buf: &mut LuaBuf) {
+        self.buff = buf;
+    }
+
+    pub fn set_slice(&mut self, slice: Slice<'a>) {
+        self.slice = slice;
+    }
+
+    pub fn decode_data(&mut self, L: *mut lua_State, data: &'a [u8]) -> Result<Vec<u8>, CodecError> {
+        self.slice = Slice::attach(data);
+        self.decode(L)
+    }
+
+    pub fn error(&mut self, err: String) {
+        self.error = err;
+    }
+
+    pub fn failed(&self) -> bool {
+        !self.error.is_empty()
+    }
+
+    pub fn err(&self) -> &str {
+        &self.error
+    }
+}
+impl<'a> Codec for BaseCodec<'a> {}
+
+// Lua专用编解码器
+pub struct LuaCodec<'a> {
+    base: BaseCodec<'a>,
+}
+
+impl<'a> LuaCodec<'a> {
+    pub fn new() -> Self {
+        Self {
+            base: BaseCodec::new(),
+        }
+    }
+
+    pub fn err(&self) -> &str { self.base.err() }
+    pub fn failed(&self) -> bool { self.base.failed() }
+    pub fn error(&mut self, err: String) { self.base.error(err) }
+    pub fn set_buf(&mut self, buf: &mut LuaBuf) { self.base.set_buf(buf) }
+    pub fn set_slice(&mut self, slice: Slice<'a>) { self.base.set_slice(slice) }
+    pub fn load_packet(&mut self, data_len: i32) -> i32 { self.base.load_packet(data_len) }
+    pub fn decode_data(&mut self, L: *mut lua_State, data: &'a [u8]) -> Result<Vec<u8>, CodecError> {
+        self.base.decode_data(L, data)
+    }
+}
+
+impl<'a> Codec for LuaCodec<'a> {}
