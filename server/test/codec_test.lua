@@ -4,6 +4,10 @@ local log_debug     = logger.debug
 local lhex_encode   = ssl.hex_encode
 
 local hash_code     = codec.hash_code
+local encode        = luakit.encode
+local decode        = luakit.decode
+local serialize     = luakit.serialize
+local unserialize   = luakit.unserialize
 
 --hash
 ----------------------------------------------------------------
@@ -40,33 +44,33 @@ log_debug("ssource-> group: {}, index: {}, time:{}", group, index, time)
 local group2, index2, time2 = codec.guid_source(guid)
 log_debug("nsource-> group: {}, index: {}, time:{}", group2, index2, time2)
 
--- --serialize
--- ----------------------------------------------------------------
--- local m = {f = 3}
--- local t = {
---     [3.63] = 1, 2, 3, 4,
---     a = 2,
---     b = {
---         s = 3, d = "4"
---     },
---     e = true,
---     g = m,
--- }
--- local ss = serialize(t)
--- log_debug("serialize-> aaa: {}", ss)
+--serialize
+----------------------------------------------------------------
+local m = {f = 3}
+local t = {
+    [3.63] = 1, 2, 3, 4,
+    a = 2,
+    b = {
+        s = 3, d = "4"
+    },
+    e = true,
+    g = m,
+}
+local ss = serialize(t)
+log_debug("serialize-> aaa: {}", ss)
 
--- local tt = unserialize(ss)
--- for k, v in pairs(tt) do
---     log_debug("unserialize k={}, v={}", k, v)
--- end
+local tt = unserialize(ss)
+for k, v in pairs(tt) do
+    log_debug("unserialize k={}, v={}", k, v)
+end
 
--- --encode
--- local e = {a = 1, c = {ab = 2}}
--- local bufe = encode(e)
--- log_debug("encode-> bufe: {}, {}", #bufe, lhex_encode(bufe))
+--encode
+local e = {a = 1, c = {ab = 2}}
+local bufe = encode(e)
+log_debug("encode-> bufe: {}, {}", #bufe, lhex_encode(bufe))
 
--- local datae = decode(bufe, #bufe)
--- log_debug("decode-> {}", datae)
+local datae = decode(bufe, #bufe)
+log_debug("decode-> {}", datae)
 
 -- local t1 = timer.clock_ms()
 -- local ip = luabus.dns("www.google.com")

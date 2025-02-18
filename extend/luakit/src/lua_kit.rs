@@ -14,7 +14,7 @@ use crate::lua_base::LuaGuard;
 use crate::lua_table::LuaTable;
 use crate::lua_reference::Reference;
 
-use crate::{ lua_set_function, call_table_warper, call_lua_warper, call_object_warper, call_function_inner };
+use crate::{ lua_set_function, lua_set_lua_function, call_table_warper, call_lua_warper, call_object_warper, call_function_inner };
 
 pub struct Luakit {
     m_L: *mut lua_State
@@ -38,8 +38,11 @@ impl Luakit {
             lua::luaL_openlibs(L);
             lua::lua_checkstack(L, 1024);
             let mut lkit = kit.new_table(Some("luakit"));
+            lkit.set_function("encode", encode);
+            lkit.set_function("decode", decode);
             lkit.set_function("serialize", serialize);
             lkit.set_function("unserialize", unserialize);
+            lkit.set_function0("luacodec", ||->i32 { return 0; });
             kit
         }
     }
@@ -207,6 +210,18 @@ impl Luakit {
     lua_set_function!(set_function8, A, B, C, D, E, F, G, H);
     lua_set_function!(set_function9, A, B, C, D, E, F, G, H, I);
     lua_set_function!(set_function10, A, B, C, D, E, F, G, H, I, J);
+
+    lua_set_lua_function!(set_lfunction0,);
+    lua_set_lua_function!(set_lfunction1, A);
+    lua_set_lua_function!(set_lfunction2, A, B);
+    lua_set_lua_function!(set_lfunction3, A, B, C);
+    lua_set_lua_function!(set_lfunction4, A, B, C, D);
+    lua_set_lua_function!(set_lfunction5, A, B, C, D, E);
+    lua_set_lua_function!(set_lfunction6, A, B, C, D, E, F);
+    lua_set_lua_function!(set_lfunction7, A, B, C, D, E, F, G);
+    lua_set_lua_function!(set_lfunction8, A, B, C, D, E, F, G, H);
+    lua_set_lua_function!(set_lfunction9, A, B, C, D, E, F, G, H, I);
+    lua_set_lua_function!(set_lfunction10, A, B, C, D, E, F, G, H, I, J);
 
     call_table_warper!(table_call0, );
     call_table_warper!(table_call1, A);

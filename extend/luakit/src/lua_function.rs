@@ -441,9 +441,24 @@ macro_rules! set_function {
 macro_rules! lua_set_function {
     ($name:ident, $($p:ident),*) => (
         pub fn $name<Z, R $(, $p)*>(&mut self, fname: &str, f: Z)
-            where Z: FnMut($($p),*) -> R, FuncWrapper<Z, ($($p,)*), R>: LuaPush {
+            where Z: FnMut($($p),*) -> R, FuncWrapper<Z, ($($p,)*), R>: LuaPushFn {
             let wrapper = FuncWrapper { function: f, marker: std::marker::PhantomData };
-            self.set(fname, wrapper);
+            wrapper.native_to_lua(self.L());
+            let wref = Reference::new(self.L());
+            self.set(fname, wref);
+        }
+    )
+}
+
+#[macro_export]
+macro_rules! lua_set_lua_function {
+    ($name:ident, $($p:ident),*) => (
+        pub fn $name<Z, R $(, $p)*>(&mut self, fname: &str, f: Z)
+            where Z: FnMut(*mut lua_State, $($p),*) -> R, FuncWrapper<Z, (*mut lua_State, $($p,)*), R>: LuaPushLuaFn {
+            let wrapper = FuncWrapper { function: f, marker: std::marker::PhantomData };
+            wrapper.native_to_lua(self.L());
+            let wref = Reference::new(self.L());
+            self.set(fname, wref);
         }
     )
 }

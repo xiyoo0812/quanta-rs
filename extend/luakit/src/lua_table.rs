@@ -7,8 +7,8 @@ use lua::{ to_char, lua_State, lua_CFunction };
 use crate::lua_function::*;
 use crate::lua_base::LuaGuard;
 use crate::lua_reference::Reference;
-use crate::lua_stack::{LuaRead, LuaPush};
-use crate::{ lua_set_function, call_lua_warper, call_function_inner };
+use crate::lua_stack::{LuaRead, LuaPush, LuaPushFn, LuaPushLuaFn};
+use crate::{ lua_set_function, lua_set_lua_function, call_lua_warper, call_function_inner };
 
 pub struct LuaTable {
     m_index: int,
@@ -111,6 +111,18 @@ impl LuaTable {
     lua_set_function!(set_function8, A, B, C, D, E, F, G, H);
     lua_set_function!(set_function9, A, B, C, D, E, F, G, H, I);
     lua_set_function!(set_function10, A, B, C, D, E, F, G, H, I, J);
+
+    lua_set_lua_function!(set_lfunction0,);
+    lua_set_lua_function!(set_lfunction1, A);
+    lua_set_lua_function!(set_lfunction2, A, B);
+    lua_set_lua_function!(set_lfunction3, A, B, C);
+    lua_set_lua_function!(set_lfunction4, A, B, C, D);
+    lua_set_lua_function!(set_lfunction5, A, B, C, D, E);
+    lua_set_lua_function!(set_lfunction6, A, B, C, D, E, F);
+    lua_set_lua_function!(set_lfunction7, A, B, C, D, E, F, G);
+    lua_set_lua_function!(set_lfunction8, A, B, C, D, E, F, G, H);
+    lua_set_lua_function!(set_lfunction9, A, B, C, D, E, F, G, H, I);
+    lua_set_lua_function!(set_lfunction10, A, B, C, D, E, F, G, H, I, J);
 }
 
 impl Drop for LuaTable {

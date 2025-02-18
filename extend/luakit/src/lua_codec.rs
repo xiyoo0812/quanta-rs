@@ -203,8 +203,8 @@ pub fn serialize(L: *mut lua_State) -> int {
 }
 
 pub fn unserialize(L: *mut lua_State) -> int {
-    let data = lua::lua_tolstring(L, 1);
-    let script = format!("return {:?}", data);
+    let data = to_utf8(lua::lua_tolstring(L, 1));
+    let script = format!("return {}", data);
     unsafe {
         if lua::luaL_loadbuffer(L, &script, script.len(), "unserialize") == 0 {
             if lua::lua_pcall(L, 0, 1, 0) == 0 {
@@ -318,6 +318,7 @@ fn index_encode(L: *mut lua_State, buff: &mut LuaBuf, index: int) {
         }
         value_encode(buff, &(sz as u8));
         vu8_encode(buff, ptr);
+        return;
     }
     value_encode(buff, &TYPE_STRINDEX);
     value_encode(buff, &(sindex as u8));
