@@ -82,9 +82,6 @@ impl LuaPush for bool {
 
 impl LuaRead for bool {
     fn lua_to_native(L: *mut lua_State, index: i32) -> Option<bool> {
-        if !lua::lua_isboolean(L, index) {
-            return Some(false)
-        }
         Some(lua::lua_toboolean(L, index))
     }
 }
