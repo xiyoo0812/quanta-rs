@@ -119,7 +119,7 @@ impl Luakit {
 
     pub fn run_file(&mut self, file: &String) ->Result<bool, String> {
         let _gl = LuaGuard::new(self.m_L);
-        if lua::luaL_loadfile(self.m_L, to_char!(file)) != 0 {
+        if lua::luaL_loadfile(self.m_L, file) != 0 {
             let err = lua::to_utf8(lua::lua_tostring(self.m_L, -1));
             println!("lua loadfile err: {}", err);
             return Err(err);

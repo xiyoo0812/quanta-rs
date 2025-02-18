@@ -5,6 +5,7 @@
 
 extern crate libc;
 
+
 use libc::c_int as int;
 use libc::c_void as void;
 use libc::c_char as char;
@@ -13,6 +14,8 @@ use libc::size_t as size_t;
 
 use std::ffi::CStr;
 use std::{ default, ptr };
+
+use crate::to_char;
 
 pub const MULTRET: int              = -1;
 
@@ -145,9 +148,10 @@ extern "C" {
 
     pub fn lua_xmove(from: *mut lua_State, to: *mut lua_State, n: int);
 
+    #[link_name = "lua_isinteger"]
+    pub fn lua_isinteger_(L: *mut lua_State, idx: int) -> int;
     pub fn lua_isnumber(L: *mut lua_State, idx: int) -> int;
     pub fn lua_isstring(L: *mut lua_State, idx: int) -> int;
-    pub fn lua_isinteger(L: *mut lua_State, idx: int) -> int;
     pub fn lua_iscfunction(L: *mut lua_State, idx: int) -> int;
     
     pub fn lua_type(L: *mut lua_State, idx: int) -> int;
@@ -187,8 +191,10 @@ extern "C" {
     pub fn lua_pushnil(L: *mut lua_State);
     pub fn lua_pushnumber(L: *mut lua_State, n: lua_Number);
     pub fn lua_pushinteger(L: *mut lua_State, n: lua_Integer);
-    pub fn lua_pushlstring(L: *mut lua_State, s: *const char, l: size_t);
-    pub fn lua_pushstring(L: *mut lua_State, s: *const char);
+    #[link_name = "lua_pushlstring"]
+    pub fn lua_pushlstring_(L: *mut lua_State, s: *const char, l: size_t);
+    #[link_name = "lua_pushstring"]
+    pub fn lua_pushstring_(L: *mut lua_State, s: *const char);
     // TODO: lua_pushvfstring()
     pub fn lua_pushfstring(L: *mut lua_State, fmt: *const char, ...) -> *const char;
     pub fn lua_pushcclosure(L: *mut lua_State, f: lua_CFunction, n: int);
@@ -267,9 +273,9 @@ extern "C" {
     pub fn luaL_unref(L: *mut lua_State, t: int, iref: int);
 
     #[link_name = "lua_error"]
-    fn lua_error_(L: *mut lua_State) -> int;
+    pub fn lua_error_(L: *mut lua_State) -> int;
     #[link_name = "luaL_error"]
-    fn luaL_error_(L: *mut lua_State, msg: *const char) -> int;
+    pub fn luaL_error_(L: *mut lua_State, msg: *const char) -> int;
 }
 
 pub fn lua_upvalueindex(i: int) -> int {
@@ -343,6 +349,10 @@ pub fn lua_isnoneornil(L: *mut lua_State, idx: int) -> bool {
     unsafe { lua_type(L, idx) <= 0 }
 }
 
+pub fn lua_isinteger(L: *mut lua_State, idx: int) -> bool {
+    unsafe { lua_isinteger_(L, idx) == 1 }
+}
+
 pub fn lua_pushglobaltable(L: *mut lua_State) {
     unsafe { lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS); }
 }
@@ -409,6 +419,14 @@ pub fn luaL_optlstring<'a>(L: *mut lua_State, i: int, def: *const char) -> &'a [
     from_cstrlen(cstr, size)
 }
 
+pub fn lua_pushstring(L: *mut lua_State, val: &str) {
+    unsafe { lua_pushstring_(L, to_char!(val)) };
+}
+
+pub fn lua_pushlstring(L: *mut lua_State, val: &str) {
+    unsafe { lua_pushlstring_(L, to_char!(val), val.len()) };
+}
+
 pub fn luaL_checknumber(L: *mut lua_State, arg: int) -> f64 {
     unsafe { luaL_checknumber_(L, arg) }
 }
@@ -441,8 +459,8 @@ pub fn lua_newuserdata(L: *mut lua_State, sz: size_t) -> *mut void {
     unsafe { lua_newuserdatauv(L, sz, 1) }
 }
 
-pub fn luaL_getmetatable(L: *mut lua_State, k: *const char) -> int {
-    unsafe { lua_getfield(L, LUA_REGISTRYINDEX, k) }
+pub fn luaL_getmetatable(L: *mut lua_State, k: &str) -> int {
+    unsafe { lua_getfield(L, LUA_REGISTRYINDEX, to_char!(k)) }
 }
 
 pub fn lua_remove(L: *mut lua_State, idx: int) {
@@ -461,12 +479,12 @@ pub fn lua_replace(L: *mut lua_State, idx: int) {
     lua_pop(L, 1)
 }
 
-pub fn luaL_loadbuffer(L: *mut lua_State, buff: *const char, sz: size_t, name: *const char) -> int {
-    unsafe { luaL_loadbufferx(L, buff, sz, name, ptr::null_mut()) }
+pub fn luaL_loadbuffer(L: *mut lua_State, buff: &str, sz: size_t, name: &str) -> int {
+    unsafe { luaL_loadbufferx(L, to_char!(buff), sz, to_char!(name), to_char!("bt")) }
 }
 
-pub fn luaL_loadfile(L: *mut lua_State, file: *const char) -> int {
-    unsafe { luaL_loadfilex(L, file, ptr::null_mut()) }
+pub fn luaL_loadfile(L: *mut lua_State, file: &str) -> int {
+    unsafe { luaL_loadfilex(L, to_char!(file), ptr::null_mut()) }
 }
 
 pub fn lua_error(L: *mut lua_State) -> ! {
@@ -476,9 +494,9 @@ pub fn lua_error(L: *mut lua_State) -> ! {
     }
 }
 
-pub fn luaL_error(L: *mut lua_State, msg: *const char) -> ! {
+pub fn luaL_error(L: *mut lua_State, msg: &str) -> ! {
     unsafe { 
-        luaL_error_(L, msg) ;
+        luaL_error_(L, to_char!(msg)) ;
         unreachable!();
     }
 }

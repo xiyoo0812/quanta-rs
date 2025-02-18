@@ -72,7 +72,7 @@ impl LuaRead for bool {
 
 impl LuaPush for *const char {
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
-        unsafe { lua::lua_pushstring(L, self); };
+        unsafe { lua::lua_pushstring_(L, self); };
         1
     }
 }
@@ -80,7 +80,7 @@ impl LuaPush for *const char {
 impl LuaPush for Vec<u8>{
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
         let buf = self.as_ptr() as *const i8;
-        unsafe { lua::lua_pushlstring(L, buf,  self.len()) };
+        unsafe { lua::lua_pushlstring_(L, buf,  self.len()) };
         1
     }
 }
@@ -108,7 +108,7 @@ impl<T> LuaPush for Option<T> where T: LuaPush {
 impl LuaPush for &[u8]{
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
         let buf = self.as_ptr() as *const i8;
-        unsafe { lua::lua_pushlstring(L, buf,  self.len()) };
+        unsafe { lua::lua_pushlstring_(L, buf,  self.len()) };
         1
     }
 }
@@ -124,7 +124,7 @@ impl<'a> LuaRead for &'a [u8]{
 
 impl LuaPush for String {
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
-        unsafe { lua::lua_pushlstring(L, to_char!(self), self.len() as usize); };
+        unsafe { lua::lua_pushlstring_(L, to_char!(self), self.len() as usize); };
         1
     }
 }
@@ -149,7 +149,7 @@ impl LuaPush for ThreadId {
 
 impl<'s> LuaPush for &'s str {
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
-        unsafe { lua::lua_pushlstring(L, to_char!(self), self.len() as usize); };
+        unsafe { lua::lua_pushlstring_(L, to_char!(self), self.len() as usize); };
         1
     }
 }
@@ -360,7 +360,7 @@ pub fn lua_push_userdata<T>(L : *mut lua_State, obj: *mut T) -> i32  {
             lua::lua_pop(L, 1);
             lua::lua_createtable(L, 0, 128);
             lua::lua_createtable(L, 0, 4);
-            lua::lua_pushstring(L, cstr!("v"));
+            lua::lua_pushstring(L, "v");
             lua::lua_setfield(L, -2, cstr!("__mode"));
             lua::lua_setmetatable(L, -2);
             lua::lua_pushvalue(L, -1);
@@ -375,7 +375,7 @@ pub fn lua_push_userdata<T>(L : *mut lua_State, obj: *mut T) -> i32  {
             lua::lua_setfield(L, -2, cstr!("__pointer__"));
             // stack: __objects__, table
             let meta_name = lua_get_meta_name::<T>();
-            lua::luaL_getmetatable(L, to_char!(meta_name));
+            lua::luaL_getmetatable(L, &meta_name);
             if lua::lua_isnil(L, -1) {
                 lua::lua_pop(L, 3);
                 lua::lua_pushlightuserdata(L, obj as *mut void);

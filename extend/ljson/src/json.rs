@@ -5,13 +5,13 @@ extern crate serde_json;
 
 use libc::c_int as int;
 
-use lua::{ cstr, to_char, lua_State };
+use lua::lua_State;
 use serde_json::{ json, Map, Number, Value };
 
 pub const MAX_ENCODE_DEPTH: u32     = 16;
 
 fn encode_number(L: *mut lua_State, idx: i32) -> Value {
-    if unsafe { lua::lua_isinteger(L, idx) } == 1 {
+    if lua::lua_isinteger(L, idx) {
         let val = lua::lua_tointeger(L, idx);
         return json!(val);
     }
@@ -24,7 +24,7 @@ fn encode_key(L: *mut lua_State, idx: i32) -> String {
     match ttype {
         lua::LUA_TSTRING=> lua::to_utf8(lua::lua_tolstring(L, idx)),
         lua::LUA_TNUMBER=> lua::lua_tonumber(L, idx).to_string(),
-        _ => lua::luaL_error(L, cstr!("encode can't pack key"))
+        _ => lua::luaL_error(L, "encode can't pack key")
     }
 }
 
@@ -57,7 +57,7 @@ unsafe fn encode_table(L: *mut lua_State, emy_as_arr: bool, idx: i32, depth: u32
 
 pub unsafe fn encode_one(L: *mut lua_State, emy_as_arr: bool, idx: i32, depth: u32) -> Value {
     if depth > MAX_ENCODE_DEPTH {
-        lua::luaL_error(L, cstr!("encode can't pack too depth table"));
+        lua::luaL_error(L, "encode can't pack too depth table");
     }
     let ttype = lua::lua_type(L, idx);
     match ttype {
@@ -103,11 +103,11 @@ pub unsafe fn decode_key(L: *mut lua_State, val: &String, numkeyable: bool) {
         let res = val.parse::<isize>();
         match res {
             Ok(val) => lua::lua_pushinteger(L, val),
-            Err(_) => lua::lua_pushlstring(L, to_char!(val), val.len() as usize)
+            Err(_) => lua::lua_pushlstring(L, val)
         }
         return
     }
-    lua::lua_pushlstring(L, to_char!(val), val.len() as usize);
+    lua::lua_pushlstring(L, val);
 }
 
 pub unsafe fn decode_object(L: *mut lua_State, val: &Map<String, Value>, numkeyable: bool) {
@@ -126,7 +126,7 @@ pub unsafe fn decode_one(L: *mut lua_State, value: &Value, numkeyable: bool) -> 
         Value::Bool(val) => lua::lua_pushboolean(L, *val as i32),
         Value::Array(val) => decode_array(L, val, numkeyable),
         Value::Object(val) => decode_object(L, val, numkeyable),
-        Value::String(val) => lua::lua_pushlstring(L, to_char!(val), val.len() as usize),
+        Value::String(val) => lua::lua_pushlstring(L, val),
     }
     return 1;
 }
@@ -135,7 +135,7 @@ pub fn decode_core(L: *mut lua_State, numkeyable: bool, json: String) -> int {
     let res = serde_json::from_str::<Value>(&json);
     match res {
         Ok(val) => unsafe { decode_one(L, &val, numkeyable) },
-        Err(_) => lua::luaL_error(L, cstr!("encode can't unpack json"))
+        Err(_) => lua::luaL_error(L, "encode can't unpack json")
     }
 }
 
@@ -151,8 +151,8 @@ pub fn encode_impl(L: *mut lua_State) -> int {
         let val = encode_one(L, emy_as_arr, 1, 0);
         let x = serde_json::to_string(&val);
         match x {
-            Ok(x) => lua::lua_pushlstring(L, to_char!(x), x.len() as usize),
-            Err(_) => lua::luaL_error(L, cstr!("encode can't pack too depth table")),
+            Ok(x) => lua::lua_pushlstring(L, &x),
+            Err(_) => lua::luaL_error(L, "encode can't pack too depth table"),
         }
         return 1;
     }

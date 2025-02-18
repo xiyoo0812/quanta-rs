@@ -3,7 +3,6 @@
 #![allow(dead_code)]
 
 use libc::c_int as int;
-use libc::c_char as char;
 use libc::c_void as void;
 
 use std::any::Any;
@@ -132,10 +131,7 @@ macro_rules! lua_read_function_args {
         let argc = lua::lua_gettop($L);
         let args = match LuaRead::lua_to_native($L, -argc) {
             Some(a) => a,
-            _ => {
-                let err_msg = format!("wrong parameter for call function arguments is {}", argc);
-                lua::luaL_error($L, err_msg.as_ptr() as * const char);
-            }
+            _ => lua::luaL_error($L, &format!("wrong parameter for call function argc is {}", argc)),
         };
         args
     }}

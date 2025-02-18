@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 use libc::c_int as int;
-use lua::{cstr, to_char, to_cptr, lua_State };
+use lua::{cstr, to_cptr, lua_State };
 
 use crate::lua_stack::LuaGc;
 use crate::{lua_get_meta_name, lua_load_userdata};
@@ -16,7 +16,7 @@ pub fn lua_class_index<T>(L: *mut lua_State) -> int {
             return 1;
         }
         let meta_name = lua_get_meta_name::<T>();
-        lua::luaL_getmetatable(L, to_char!(meta_name));
+        lua::luaL_getmetatable(L, &meta_name);
         if lua::lua_istable(L, -1) {
             lua::lua_getfield(L, -1, to_cptr(key));
             if lua::lua_istable(L, -1) {
@@ -42,7 +42,7 @@ pub fn lua_class_newindex<T>(L: *mut lua_State) -> int {
             return 0;
         }
         let meta_name = lua_get_meta_name::<T>();
-        lua::luaL_getmetatable(L, to_char!(meta_name));
+        lua::luaL_getmetatable(L, &meta_name);
         if lua::lua_istable(L, -1) {
             lua::lua_getfield(L, -1, to_cptr(key));
             if lua::lua_isnil(L, -1) {
@@ -84,7 +84,7 @@ macro_rules! new_class {
         let L = $lua.L();
         let _gl = luakit::LuaGuard::new(L);
         let meta_name = luakit::lua_get_meta_name::<$class>();
-        lua::luaL_getmetatable(L, lua::to_char!(meta_name));
+        lua::luaL_getmetatable(L, &meta_name);
         if (lua::lua_isnil(L, -1)) {
             lua::lua_pop(L, 1);
             let meta = [

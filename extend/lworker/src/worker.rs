@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-use luakit::{ LuaBuf, BaseCodec };
+use luakit::{ LuaBuf, BaseCodec, decode_slice };
 
 // Lua专用编解码器
 pub struct WorkerCodec<'a> {
@@ -23,4 +23,8 @@ impl<'a> WorkerCodec<'a> {
     pub fn load_packet(&mut self, data_len: i32) -> i32 { self.base.load_packet(data_len) }
 }
 
-impl<'a> Codec for WorkerCodec<'a> {}
+impl<'a> Codec for WorkerCodec<'a> {
+    fn decode(&mut self, L: *mut lua_State) -> Result<i32, CodecError>{
+        decode_slice(L, &mut self.base.slice)
+    }
+}

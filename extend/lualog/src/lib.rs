@@ -38,7 +38,7 @@ fn read_args(L: *mut lua_State, flag: int, index: int) -> String {
         lua::LUA_TBOOLEAN => ternary!(lua::lua_toboolean(L, index), "true".to_string(), "false".to_string()),
         lua::LUA_TSTRING => lua::to_utf8(lua::lua_tolstring(L, index)),
         lua::LUA_TNUMBER => {
-            if unsafe { lua::lua_isinteger(L, index) } == 1 {
+            if lua::lua_isinteger(L, index) {
                 return format!("{}", lua::lua_tointeger(L, index));
             }
             format!("{}", lua::lua_tonumber(L, index))
