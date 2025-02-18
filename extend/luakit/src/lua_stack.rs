@@ -5,6 +5,7 @@ use libc::c_char as char;
 use libc::c_void as void;
 use lua::{cstr, to_char, lua_State};
 
+use std::ptr;
 use std::thread::ThreadId;
 use std::collections::HashMap;
 
@@ -44,6 +45,15 @@ impl <T> LuaPush for Box<T> {
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
         let tptr: *mut T = Box::into_raw(self);
         lua_push_userdata(L, tptr)
+    }
+}
+
+impl LuaRead for *mut void {
+    fn lua_to_native(L: *mut lua_State, index: i32) -> Option<*mut void> {
+        if !lua::lua_isuserdata(L, index) {
+            return Some(ptr::null_mut())
+        }
+        Some(lua_load_userdata(L, index))
     }
 }
 
