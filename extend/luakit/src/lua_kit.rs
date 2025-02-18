@@ -42,7 +42,7 @@ impl Luakit {
             lkit.set_function("decode", decode);
             lkit.set_function("serialize", serialize);
             lkit.set_function("unserialize", unserialize);
-            lkit.set_function0("luacodec", ||->i32 { return 0; });
+            lkit.set_function0("luacodec", || Box::new(LuaCodec::new()));
             kit
         }
     }
