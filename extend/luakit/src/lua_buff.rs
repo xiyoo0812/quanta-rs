@@ -43,6 +43,10 @@ impl LuaBuf {
         self.tail - self.head
     }
 
+    pub fn empty(&self) -> bool {
+        self.head == self.tail
+    }
+
     pub fn capacity(&self) -> usize {
         self.capacity
     }
@@ -103,7 +107,7 @@ impl LuaBuf {
         }
     }
 
-    pub fn peek_data(&self, peek_len: usize, offset: Option<usize>) -> Option<&[u8]> {
+    pub fn peek_data<'a>(&'a self, peek_len: usize, offset: Option<usize>) -> Option<&'a [u8]> {
         let offset = offset.unwrap_or(0);
         let available = self.size().saturating_sub(offset);
         (peek_len <= available).then(|| {
@@ -112,7 +116,7 @@ impl LuaBuf {
         })
     }
 
-    pub fn get_slice(&self, len: Option<usize>, offset: Option<usize>) -> Slice {
+    pub fn get_slice<'a>(&'a self, len: Option<usize>, offset: Option<usize>) -> Slice<'a> {
         let len = len.unwrap_or(0);
         let offset = offset.unwrap_or(0);
         let data_len = self.tail - (self.head + offset);
@@ -160,7 +164,18 @@ impl LuaBuf {
         self.push_data(bytes)
     }
 
-    fn read<T>(&mut self) -> Option<&T> {
+    pub fn peek<T>(&self) -> Option<&T> {
+        let tpe_len = mem::size_of::<T>();
+        let data_len = self.tail - self.head;
+        if tpe_len > 0 && data_len >= tpe_len {
+            let item_ptr = self.data[self.head..].as_ptr() as *const T;
+            unsafe { Some(&*item_ptr) }
+        } else {
+            None
+        }
+    }
+
+    pub fn read<T>(&mut self) -> Option<&T> {
         let tpe_len = mem::size_of::<T>();
         let data_len = self.tail - self.head;
         if tpe_len > 0 && data_len >= tpe_len {
@@ -173,7 +188,7 @@ impl LuaBuf {
     }
 
     // 辅助方法
-    fn free_space(&self) -> usize {
+    pub fn free_space(&self) -> usize {
         self.capacity - self.tail
     }
 
