@@ -484,10 +484,10 @@ pub fn decode(L: *mut lua_State) -> int {
 
 // 核心编解码trait
 pub trait Codec {
-    fn encode(&mut self, L: *mut lua_State, index: i32, len: *mut i32) -> Vec<u8> {
+    fn encode(&mut self, L: *mut lua_State, index: i32) -> Vec<u8> {
         let n = unsafe { lua::lua_gettop(L) } - index + 1;
         let slice = encode_slice(L, index, n);
-        slice.data(len).to_vec()
+        slice.data().to_vec()
     }
     fn decode(&mut self, L: *mut lua_State) -> Result<i32, CodecError>;
 }

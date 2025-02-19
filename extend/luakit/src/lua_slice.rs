@@ -65,8 +65,7 @@ impl<'a> Slice<'a> {
         Some(value)
     }
 
-    pub fn data(&self, len: *mut i32) -> &[u8] {
-        unsafe { *len = self.size() as i32 }; 
+    pub fn data(&self) -> &[u8] {
         &self.data[self.pos..]
     }
 

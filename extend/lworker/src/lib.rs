@@ -5,6 +5,7 @@ extern crate libc;
 extern crate luakit;
 
 mod worker;
+mod scheduler;
 
 use lua::lua_State;
 use libc::c_int as int;
