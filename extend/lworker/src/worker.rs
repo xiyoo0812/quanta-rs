@@ -8,7 +8,7 @@ use std::ops::{Deref, DerefMut};
 use std::thread::{self, JoinHandle };
 
 use lua::lua_State;
-use luakit::{ BaseCodec, Codec, CodecError, LuaBuf, Luakit, LuaPushFn, steady_ms };
+use luakit::{ BaseCodec, Codec, CodecError, LuaBuf, Luakit, LuaPushFn, LuaPushLuaFn, steady_ms };
 
 pub trait IScheduler {
     fn broadcast(&mut self, L: *mut lua_State) -> i32;
@@ -248,11 +248,11 @@ impl Worker {
         });
         luakit::set_function!(quanta, "call", |L: *mut lua_State, name: String| {
             let data = self.m_codec.encode(L, 2);
-            let scheduler = self.m_scheduler.lock().unwrap();
+            let mut scheduler = self.m_scheduler.lock().unwrap();
             return scheduler.call(L, &name, &data);
         });
         luakit::set_function!(quanta, "call", |L: *mut lua_State| {
-            let scheduler = self.m_scheduler.lock().unwrap();
+            let mut scheduler = self.m_scheduler.lock().unwrap();
             return scheduler.broadcast(L);
         });
         if let Some(sandbox) = self.get_env("QUANTA_SANDBOX") {

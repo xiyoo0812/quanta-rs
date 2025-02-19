@@ -6,9 +6,12 @@ extern crate luakit;
 
 mod worker;
 mod scheduler;
+use std::cell::{OnceCell, RefCell};
 
 use lua::lua_State;
 use libc::c_int as int;
+
+use crate::scheduler::Scheduler;
 
 use luakit::{ Luakit, LuaPush };
 

@@ -11,7 +11,7 @@ use crate::worker::{ IScheduler, Worker, WorkerCodec};
 
 type Environs = HashMap<String, String>;
 
-struct Scheduler {
+pub struct Scheduler {
     m_lua: Luakit,
     m_last_tick: u64,
     m_mutex: Mutex<()>,
