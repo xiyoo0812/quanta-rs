@@ -2,27 +2,48 @@
 #![allow(dead_code)]
 
 use std::env;
+use std::cell::RefCell;
 
 use lua::{ cstr, to_char, lua_State, lua_CFunction };
 
 use crate::lua_stack::*;
+use crate::lua_codec::*;
 use crate::lua_function::*;
+use crate::lua_buff::LuaBuf;
 use crate::lua_base::LuaGuard;
 use crate::lua_table::LuaTable;
 use crate::lua_reference::Reference;
-use crate::{ lua_set_function, call_table_warper, call_lua_warper, call_object_warper, call_function_inner };
+
+use crate::{ lua_set_function, lua_set_lua_function, call_table_warper, call_lua_warper, call_object_warper, call_function_inner };
 
 pub struct Luakit {
     m_L: *mut lua_State
+}
+
+thread_local! {
+    static LUA_BUFF: RefCell<LuaBuf> = RefCell::new(LuaBuf::new());
+}
+
+pub fn get_buff() -> &'static mut LuaBuf {
+    LUA_BUFF.with(|lua_buff| {
+        unsafe { &mut *lua_buff.as_ptr() }
+    })
 }
 
 impl Luakit {
     pub fn new() -> Luakit {
         unsafe {
             let L =  lua::luaL_newstate();
+            let mut kit = Luakit { m_L: L };
             lua::luaL_openlibs(L);
             lua::lua_checkstack(L, 1024);
-            Luakit { m_L: L }
+            let mut lkit = kit.new_table(Some("luakit"));
+            lkit.set_function("encode", encode);
+            lkit.set_function("decode", decode);
+            lkit.set_function("serialize", serialize);
+            lkit.set_function("unserialize", unserialize);
+            lkit.set_function0("luacodec", || Box::new(LuaCodec::new()));
+            kit
         }
     }
 
@@ -101,7 +122,7 @@ impl Luakit {
 
     pub fn run_file(&mut self, file: &String) ->Result<bool, String> {
         let _gl = LuaGuard::new(self.m_L);
-        if lua::luaL_loadfile(self.m_L, to_char!(file)) != 0 {
+        if lua::luaL_loadfile(self.m_L, file) != 0 {
             let err = lua::to_utf8(lua::lua_tostring(self.m_L, -1));
             println!("lua loadfile err: {}", err);
             return Err(err);
@@ -189,6 +210,18 @@ impl Luakit {
     lua_set_function!(set_function8, A, B, C, D, E, F, G, H);
     lua_set_function!(set_function9, A, B, C, D, E, F, G, H, I);
     lua_set_function!(set_function10, A, B, C, D, E, F, G, H, I, J);
+
+    lua_set_lua_function!(set_lfunction0,);
+    lua_set_lua_function!(set_lfunction1, A);
+    lua_set_lua_function!(set_lfunction2, A, B);
+    lua_set_lua_function!(set_lfunction3, A, B, C);
+    lua_set_lua_function!(set_lfunction4, A, B, C, D);
+    lua_set_lua_function!(set_lfunction5, A, B, C, D, E);
+    lua_set_lua_function!(set_lfunction6, A, B, C, D, E, F);
+    lua_set_lua_function!(set_lfunction7, A, B, C, D, E, F, G);
+    lua_set_lua_function!(set_lfunction8, A, B, C, D, E, F, G, H);
+    lua_set_lua_function!(set_lfunction9, A, B, C, D, E, F, G, H, I);
+    lua_set_lua_function!(set_lfunction10, A, B, C, D, E, F, G, H, I, J);
 
     call_table_warper!(table_call0, );
     call_table_warper!(table_call1, A);

@@ -4,6 +4,7 @@ members = [
     "extend/lua",
     "extend/luakit",
     "extend/lualog",
+    "extend/lssl",
     "extend/luapb",
     "extend/ljson",
     "extend/ltoml",
@@ -11,7 +12,7 @@ members = [
     "extend/lcodec",
     "extend/lstdfs",
     "extend/ltimer",
-    "extend/lssl",
+    "extend/lworker",
     "core/quanta",
 ]
 

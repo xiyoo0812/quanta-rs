@@ -112,15 +112,12 @@ impl LuaBuf {
         })
     }
 
-    pub fn get_slice(&self, len: Option<usize>, offset: Option<usize>) -> Option<Slice> {
+    pub fn get_slice(&self, len: Option<usize>, offset: Option<usize>) -> Slice {
         let len = len.unwrap_or(0);
         let offset = offset.unwrap_or(0);
         let data_len = self.tail - (self.head + offset);
-        let len = ternary!(len == 0, data_len, len);
-        if len <= data_len {
-            return Some(Slice::attach(&self.data[self.head + offset..self.head + offset + len]));
-        }
-        None
+        let len = ternary!(len == 0, data_len, ternary!(len > data_len, data_len, len));
+        Slice::attach(&self.data[self.head + offset..self.head + offset + len])
     }
 
     pub fn peek_space(&mut self, need_len: usize) -> Option<&mut [u8]> {
@@ -139,6 +136,10 @@ impl LuaBuf {
         }
         let start = self.tail;
         Some(&mut self.data[start..start+need_len])
+    }
+
+    pub fn data<'a>(&'a self) -> &'a [u8] {
+        &self.data
     }
 
     pub fn string(&self) -> &str {

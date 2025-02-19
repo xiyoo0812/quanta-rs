@@ -1,6 +1,11 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
+use libc::c_int as int;
+use libc::c_char as char;
+
+use lua::{ to_cptr, lua_State };
+
 #[derive(Clone, Debug)]
 pub struct Slice<'a> {
     data: &'a [u8],
@@ -26,13 +31,11 @@ impl<'a> Slice<'a> {
         (end <= self.data.len()).then(|| &self.data[start..end])
     }
 
-    pub fn erase(&mut self, erase_len: usize) -> Option<&[u8]> {
+    pub fn erase(&mut self, erase_len: usize) {
         let new_pos = self.pos + erase_len;
-        (new_pos <= self.data.len()).then(|| {
-            let slice = &self.data[self.pos..new_pos];
+        if new_pos <= self.data.len() {
             self.pos = new_pos;
-            slice
-        })
+        }
     }
 
     pub fn read<T: Copy + Default>(&mut self) -> Option<T> {
@@ -49,12 +52,48 @@ impl<'a> Slice<'a> {
         Some(value)
     }
 
+    pub fn data(&self, len: *mut i32) -> &[u8] {
+        unsafe { *len = self.size() as i32 }; 
+        &self.data[self.pos..]
+    }
+
+    pub fn head(&self) -> *const char {
+        to_cptr(&self.data[self.pos..])
+    }
+
+    pub fn eof(&mut self) -> &[u8] {
+        let data = &self.data[self.pos..];
+        self.pos += data.len();
+        data
+    }
+
     pub fn contents(&self) -> &[u8] {
         &self.data[self.pos..]
     }
 
-    pub fn remaining(&self) -> &[u8] {
-        &self.data[self.pos..]
+    pub fn check(&self, L: *mut lua_State) -> int{
+        let peek_len = lua::lua_tointeger(L, 1) as usize;
+        if self.size() >= peek_len {
+            unsafe { lua::lua_pushlstring_(L, to_cptr(&self.data[self.pos..]), peek_len) };
+            return 1;
+        }
+        0
     }
+
+    pub fn recv(&mut self, L: *mut lua_State) -> int{
+        let read_len = lua::lua_tointeger(L, 1) as usize;
+        if read_len > 0 && self.size() >= read_len {
+            unsafe { lua::lua_pushlstring_(L, to_cptr(&self.data[self.pos..]), read_len) };
+            self.pos += read_len;
+            return 1;
+        }
+        0
+    }
+
+    pub fn string(&self, L: *mut lua_State) -> int{
+        unsafe { lua::lua_pushlstring_(L, to_cptr(&self.data[self.pos..]), self.size()) };
+        1
+    }
+
 }
 

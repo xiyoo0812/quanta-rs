@@ -3,8 +3,8 @@
 
 extern crate serde_yml;
 
+use lua::lua_State;
 use libc::c_int as int;
-use lua::{ cstr, to_char, lua_State };
 
 use serde_yml::{ Mapping, Number, Value };
 use std::{fs::File, fs::OpenOptions, io::Read, io::Write};
@@ -12,7 +12,7 @@ use std::{fs::File, fs::OpenOptions, io::Read, io::Write};
 pub const MAX_ENCODE_DEPTH: u32     = 16;
 
 fn encode_number(L: *mut lua_State, idx: i32) -> Value {
-    if unsafe { lua::lua_isinteger(L, idx) } == 1 {
+    if lua::lua_isinteger(L, idx) {
         let val = lua::lua_tointeger(L, idx);
         return Value::Number(Number::from(val));
     }
@@ -49,7 +49,7 @@ unsafe fn encode_table(L: *mut lua_State, emy_as_arr: bool, idx: i32, depth: u32
 
 pub unsafe fn encode_one(L: *mut lua_State, emy_as_arr: bool, idx: i32, depth: u32) -> Value {
     if depth > MAX_ENCODE_DEPTH {
-        lua::luaL_error(L, cstr!("encode can't pack too depth table"));
+        lua::luaL_error(L, "encode can't pack too depth table");
     }
     let ttype = lua::lua_type(L, idx);
     match ttype {
@@ -107,7 +107,7 @@ pub unsafe fn decode_one(L: *mut lua_State, value: &Value) -> int {
         Value::Bool(val) => lua::lua_pushboolean(L, *val as i32),
         Value::Sequence(val) => decode_array(L, val),
         Value::Mapping(val) => decode_object(L, val),
-        Value::String(val) => lua::lua_pushlstring(L, to_char!(val), val.len() as usize),
+        Value::String(val) => lua::lua_pushlstring(L, val),
     }
     return 1;
 }
@@ -117,11 +117,11 @@ pub fn decode_core(L: *mut lua_State, yaml: String) -> int {
     match res {
         Ok(mut val) => {
             if val.apply_merge().is_err() {
-                lua::luaL_error(L, cstr!("encode can't unpack json"));
+                lua::luaL_error(L, "encode can't unpack json");
             }
             unsafe { decode_one(L, &val) }
         },
-        Err(_) => lua::luaL_error(L, cstr!("encode can't unpack json"))
+        Err(_) => lua::luaL_error(L, "encode can't unpack json")
     }
 }
 
@@ -136,8 +136,8 @@ pub fn encode(L: *mut lua_State) -> int {
         let val = encode_one(L, emy_as_arr, 1, 0);
         let x: Result<_, _> = serde_yml::to_string(&val);
         match x {
-            Ok(x) => lua::lua_pushlstring(L, to_char!(x), x.len() as usize),
-            Err(_) => lua::luaL_error(L, cstr!("encode can't pack too depth table")),
+            Ok(x) => lua::lua_pushlstring(L, &x),
+            Err(_) => lua::luaL_error(L, "encode can't pack too depth table"),
         }
         return 1;
     }
@@ -151,10 +151,10 @@ pub fn open(L: *mut lua_State) -> int {
             let mut yaml = String::new();
             match f.read_to_string(&mut yaml) {
                 Ok(_) => { return decode_core(L, yaml); },
-                Err(e) => lua::luaL_error(L, to_char!(e.to_string()))
+                Err(e) => lua::luaL_error(L, &e.to_string())
             };
         },
-        Err(e) => lua::luaL_error(L, to_char!(e.to_string()))
+        Err(e) => lua::luaL_error(L, &e.to_string())
     }
 }
 
@@ -170,13 +170,13 @@ pub fn save(L: *mut lua_State) -> int {
                     Ok(x) => {
                         match f.write_all(x.as_bytes()) {
                             Ok(_) => return 0,
-                            Err(e) => lua::luaL_error(L, to_char!(e.to_string()))
+                            Err(e) => lua::luaL_error(L, &e.to_string())
                         };
                     },
-                    Err(e) => lua::luaL_error(L, to_char!(e.to_string()))
+                    Err(e) => lua::luaL_error(L, &e.to_string())
                 }
             },
-            Err(e) => lua::luaL_error(L, to_char!(e.to_string()))
+            Err(e) => lua::luaL_error(L, &e.to_string())
         }
     }
 }
