@@ -61,8 +61,7 @@ impl Scheduler {
     
     pub fn stop(&mut self, name: String) {
         if let Some((_, wapper)) = self.m_workers.remove(&name) {
-            let mut nwapper = wapper.clone();
-            let worker = unsafe { nwapper.as_mut() };
+            let mut worker = wapper.clone().unwrap();
             worker.stop();
         }
     }
