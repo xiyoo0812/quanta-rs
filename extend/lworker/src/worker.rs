@@ -12,7 +12,7 @@ use luakit::{ BaseCodec, Codec, CodecError, LuaBuf, Luakit, LuaPushFn, LuaPushLu
 
 pub trait IScheduler {
     fn broadcast(&mut self, L: *mut lua_State) -> i32;
-    fn call(&mut self, L: *mut lua_State, name: &str, data: &[u8]) -> i32;
+    fn call(&mut self, L: *mut lua_State, name: &str) -> i32;
 }
 
 pub struct WorkerCodec {
@@ -117,6 +117,10 @@ impl WorkerWrapper {
         let ptr = Box::into_raw(worker);
         WorkerWrapper(ptr)
     }
+    pub fn unwrap(self) -> Box<Worker> {
+        let ptr = self.0;
+        unsafe { Box::from_raw(ptr) }
+    }
 }
 unsafe impl Send for WorkerWrapper {}
 unsafe impl Sync for WorkerWrapper {}
@@ -128,13 +132,13 @@ impl Drop for Worker {
 }
 
 impl Worker {
-    pub fn new(scheduler: *mut dyn IScheduler, lua: Luakit, name: String, namespace: String) -> Self {
+    pub fn new(scheduler: *mut dyn IScheduler, name: String, namespace: String) -> Self {
         Self {
-            m_lua : lua,
             m_name : name,
             m_stop : false,
             m_running : true,
             m_thread : None,
+            m_lua : Luakit::new(),
             m_scheduler: scheduler,
             m_namespace : namespace,
             m_mutex: Mutex::new(()),
@@ -260,10 +264,9 @@ impl Worker {
             self.set_env(key.as_str(), val.as_str(), true);
         });
         luakit::set_function!(quanta, "call", |L: *mut lua_State, name: String| {
-            let data = self.m_codec.encode(L, 2);
-            return unsafe { (*self.m_scheduler).call(L, &name, &data) };
+            return unsafe { (*self.m_scheduler).call(L, &name) };
         });
-        luakit::set_function!(quanta, "call", |L: *mut lua_State| {
+        luakit::set_function!(quanta, "broadcast", |L: *mut lua_State| {
             return unsafe { (*self.m_scheduler).broadcast(L) };
         });
         if let Some(sandbox) = self.get_env("QUANTA_SANDBOX") {
