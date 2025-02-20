@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 use std::process;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::thread::{self, JoinHandle };
@@ -103,10 +103,23 @@ pub struct Worker {
     m_codec: WorkerCodec,
     m_environs: Environs,
     m_thread: Option<JoinHandle<()>>,
-    m_scheduler: Arc<Mutex<dyn IScheduler>>,
+    m_scheduler: *mut dyn IScheduler,
 }
 
-unsafe impl Send for Worker {}
+#[derive(Debug, Clone)]
+pub struct WorkerWrapper(*mut Worker);
+impl WorkerWrapper {
+    /// 安全条件：调用时指针必须有效且独占
+    pub unsafe fn as_mut(&mut self) -> &mut Worker {
+        &mut *self.0
+    }
+    pub fn new(worker: Box<Worker>) -> Self {
+        let ptr = Box::into_raw(worker);
+        WorkerWrapper(ptr)
+    }
+}
+unsafe impl Send for WorkerWrapper {}
+unsafe impl Sync for WorkerWrapper {}
 
 impl Drop for Worker {
     fn drop(&mut self) {
@@ -115,18 +128,18 @@ impl Drop for Worker {
 }
 
 impl Worker {
-    pub fn new(scheduler: Arc<Mutex<dyn IScheduler>>, lua: Luakit, name: String, namespace: String) -> Self {
+    pub fn new(scheduler: *mut dyn IScheduler, lua: Luakit, name: String, namespace: String) -> Self {
         Self {
             m_lua : lua,
+            m_name : name,
             m_stop : false,
             m_running : true,
             m_thread : None,
-            m_name : name,
+            m_scheduler: scheduler,
             m_namespace : namespace,
             m_mutex: Mutex::new(()),
             m_environs : HashMap::new(),
             m_codec : WorkerCodec::new(),
-            m_scheduler: scheduler.clone(),
         }
     }
 
@@ -248,12 +261,10 @@ impl Worker {
         });
         luakit::set_function!(quanta, "call", |L: *mut lua_State, name: String| {
             let data = self.m_codec.encode(L, 2);
-            let mut scheduler = self.m_scheduler.lock().unwrap();
-            return scheduler.call(L, &name, &data);
+            return unsafe { (*self.m_scheduler).call(L, &name, &data) };
         });
         luakit::set_function!(quanta, "call", |L: *mut lua_State| {
-            let mut scheduler = self.m_scheduler.lock().unwrap();
-            return scheduler.broadcast(L);
+            return unsafe { (*self.m_scheduler).broadcast(L) };
         });
         if let Some(sandbox) = self.get_env("QUANTA_SANDBOX") {
             if let Some(entry) = self.get_env("QUANTA_ENTRY") {
@@ -280,17 +291,13 @@ impl Worker {
         self.m_running
     }
 
-    pub fn start(&mut self, worker_obj: Arc<Mutex<Worker>>) {
-        if self.m_thread.is_some() { return; }
-        self.m_thread = Some(thread::spawn(move|| {{
-            if let Ok(mut worker) = worker_obj.lock() {
-                if !worker.init() { return; }
-            }}
-            loop {
-                if let Ok(mut worker) = worker_obj.lock() {
-                    if !worker.run() { break; }
-                }
-            }
+    pub fn start(&mut self, mut wrappr: WorkerWrapper) {
+        if self.m_thread.is_some() {
+            return;
+        }
+        self.m_thread = Some(thread::spawn(move || {
+            let worker = unsafe { wrappr.as_mut() };
+            worker.run();
         }));
     }
 

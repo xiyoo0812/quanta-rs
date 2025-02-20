@@ -2,12 +2,12 @@
 #![allow(dead_code)]
 
 use dashmap::DashMap;
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::Mutex;
 use std::collections::HashMap;
 
 use lua::lua_State;
 use luakit::{ Codec, LuaTable, Luakit, steady_ms };
-use crate::worker::{ IScheduler, Worker, WorkerCodec};
+use crate::worker::{ IScheduler, Worker, WorkerCodec, WorkerWrapper};
 
 type Environs = HashMap<String, String>;
 
@@ -18,31 +18,20 @@ pub struct Scheduler {
     m_namespace: String,
     m_codec: WorkerCodec,
     m_environs: Environs,
-    m_scheduler: Arc<Mutex<dyn IScheduler>>,
-    m_workers: DashMap<String, Arc<Mutex<Worker>>>,
-}
-
-struct SchedulerImpl {
-    scheduler: Weak<Mutex<Scheduler>>,
+    m_workers: DashMap<String, WorkerWrapper>,
 }
 
 impl Scheduler {
-    pub fn new(L: *mut lua_State, namespace: String) -> Arc<Mutex<Self>> {
-        Arc::new_cyclic(|weak_self| {
-            let scheduler = Arc::new(Mutex::new(SchedulerImpl {
-                scheduler: weak_self.clone(),
-            })) as Arc<Mutex<dyn IScheduler>>;
-            Mutex::new(Scheduler{
-                m_last_tick: 0,
-                m_namespace : namespace,
-                m_lua : Luakit::load(L),
-                m_mutex: Mutex::new(()),
-                m_environs : HashMap::new(),
-                m_codec : WorkerCodec::new(),
-                m_workers : DashMap::new(),
-                m_scheduler : scheduler,
-            })
-        })
+    pub fn new(L: *mut lua_State, namespace: String) -> Self {
+        Scheduler{
+            m_last_tick: 0,
+            m_namespace : namespace,
+            m_lua : Luakit::load(L),
+            m_mutex: Mutex::new(()),
+            m_environs : HashMap::new(),
+            m_codec : WorkerCodec::new(),
+            m_workers : DashMap::new(),
+        }
     }
 
     pub fn setup(&mut self) -> bool {
@@ -59,27 +48,29 @@ impl Scheduler {
         if self.m_workers.contains_key(&name) {
             return false;
         }
-        let clone = self.m_scheduler.clone();
-        let mut workor = Worker::new(clone, Luakit::new(), name.clone(), self.m_namespace.clone());
+        let mut workor = Box::new(Worker::new(self, Luakit::new(), name.clone(), self.m_namespace.clone()));
         workor.setup(self.m_environs.clone(), envs, conf);
-        let rcworker: Arc<Mutex<Worker>> =  Arc::new(Mutex::new(workor));
-        let mut worker = rcworker.lock().unwrap();
-        worker.start(rcworker.clone());
-        self.m_workers.insert(name, rcworker.clone());
+        let wapper = WorkerWrapper::new(workor);
+        self.m_workers.insert(name, wapper.clone());
+        let mut nwapper = wapper.clone();
+        let worker = unsafe { nwapper.as_mut() };
+        worker.start(wapper);
         true
     }
     
     pub fn stop(&mut self, name: String) {
-        if let Some((_, worker)) = self.m_workers.remove(&name) {
-            let mut worker = worker.lock().unwrap();
+        if let Some((_, wapper)) = self.m_workers.remove(&name) {
+            let mut nwapper = wapper.clone();
+            let worker = unsafe { nwapper.as_mut() };
             worker.stop();
         }
     }
 
     
     pub fn check_worker(&mut self) {
-        self.m_workers.retain(|_, worker| {
-            let mut worker = worker.lock().unwrap();
+        self.m_workers.retain(|_, wapper| {
+            let mut nwapper = wapper.clone();
+            let worker = unsafe { nwapper.as_mut() };
             if !worker.running() {
                 worker.stop();
                 return false;
@@ -89,8 +80,9 @@ impl Scheduler {
     }
 
     pub fn shutdown(&mut self) {
-        self.m_workers.retain(|_, worker| {
-            let mut worker = worker.lock().unwrap();
+        self.m_workers.retain(|_, wapper| {
+            let mut nwapper = wapper.clone();
+            let worker = unsafe { nwapper.as_mut() };
             worker.stop();
             false
         });
@@ -117,11 +109,14 @@ impl Scheduler {
             }
         }
     }
+}
 
+impl IScheduler for Scheduler {
     fn broadcast(&mut self, L: *mut lua_State) -> i32{
         let data = self.m_codec.encode(L, 2);
-        for worker in self.m_workers.iter() {
-            let mut worker = worker.lock().unwrap();
+        for wapper in self.m_workers.iter() {
+            let mut nwapper = wapper.clone();
+            let worker = unsafe { nwapper.as_mut() };
             worker.call(&data);
         }
         0
@@ -133,8 +128,9 @@ impl Scheduler {
                 unsafe{ lua::lua_pushboolean(L, ok as i32) };
                 return 1;
             }
-            if let Some(worker) = self.m_workers.get(name) {
-                let mut worker = worker.lock().unwrap();
+            if let Some(wapper) = self.m_workers.get(name) {
+                let mut nwapper = wapper.clone();
+                let worker = unsafe { nwapper.as_mut() };
                 let ok = worker.call(data);
                 unsafe{ lua::lua_pushboolean(L, ok as i32) };
                 return 1;
@@ -142,24 +138,5 @@ impl Scheduler {
         }
         unsafe{ lua::lua_pushboolean(L, 0) };
         1
-    }
-}
-
-impl IScheduler for SchedulerImpl {
-    fn broadcast(&mut self, L: *mut lua_State) -> i32{
-        if let Some(scheduler) = self.scheduler.upgrade() {
-            let mut scheduler = scheduler.lock().unwrap();
-            scheduler.broadcast(L)
-        } else {
-            0
-        }
-    }
-    fn call(&mut self, L: *mut lua_State, name: &str, data: &[u8]) -> i32{
-        if let Some(scheduler) = self.scheduler.upgrade() {
-            let mut scheduler = scheduler.lock().unwrap();
-            scheduler.call(L, name, data)
-        } else {
-            0
-        }
     }
 }
