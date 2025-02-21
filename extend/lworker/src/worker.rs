@@ -8,11 +8,25 @@ use std::ops::{Deref, DerefMut};
 use std::thread::{self, JoinHandle };
 
 use lua::lua_State;
-use luakit::{ BaseCodec, Codec, CodecError, LuaBuf, Luakit, LuaPushFn, LuaPushLuaFn, steady_ms };
+use libc::c_int as int;
+use luakit::{ steady_ms, BaseCodec, Codec, CodecError, LuaBuf, LuaPushFn, LuaPushLuaFn, Luakit, PtrWrapper };
+
+type Environs = HashMap<String, String>;
 
 pub trait IScheduler {
-    fn broadcast(&mut self, L: *mut lua_State) -> i32;
-    fn call(&mut self, L: *mut lua_State, name: &str) -> i32;
+    fn broadcast(&mut self, L: *mut lua_State) -> int;
+    fn call(&mut self, L: *mut lua_State, name: &str) -> int;
+}
+
+pub fn lua_table_call<T: Codec>(L: *mut lua_State, codec: &mut T, table: &str, func: &str) ->bool {
+    if luakit::get_table_function(L, table, func) {
+        if let Ok(argc) = codec.decode(L) {
+            if let Ok(_) = luakit::lua_call_function(L, argc, 0) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 pub struct WorkerCodec {
@@ -91,8 +105,6 @@ impl Codec for WorkerCodec {
     }
 }
 
-type Environs = HashMap<String, String>;
-
 pub struct Worker {
     m_stop: bool,
     m_running: bool,
@@ -105,25 +117,6 @@ pub struct Worker {
     m_thread: Option<JoinHandle<()>>,
     m_scheduler: *mut dyn IScheduler,
 }
-
-#[derive(Debug, Clone)]
-pub struct WorkerWrapper(*mut Worker);
-impl WorkerWrapper {
-    /// 安全条件：调用时指针必须有效且独占
-    pub unsafe fn as_mut(&mut self) -> &mut Worker {
-        &mut *self.0
-    }
-    pub fn new(worker: Box<Worker>) -> Self {
-        let ptr = Box::into_raw(worker);
-        WorkerWrapper(ptr)
-    }
-    pub fn unwrap(self) -> Box<Worker> {
-        let ptr = self.0;
-        unsafe { Box::from_raw(ptr) }
-    }
-}
-unsafe impl Send for WorkerWrapper {}
-unsafe impl Sync for WorkerWrapper {}
 
 impl Drop for Worker {
     fn drop(&mut self) {
@@ -198,14 +191,9 @@ impl Worker {
         if !self.m_codec.update() {
             return;
         }
+        let L = self.m_lua.L();
         while let Some(packet_len) = self.m_codec.touch() {
-            // m_lua->table_call(ns, "on_worker", nullptr, &m_codec, std::tie());
-            // if (m_codec.failed()) {
-            //     m_read_buf->clean();
-            //     break;
-            // }
-            let x = self.m_codec.decode(self.m_lua.L());
-            if x.is_err() {
+            if !lua_table_call(L, &mut self.m_codec, &self.m_namespace, "on_worker") {
                 self.m_codec.cleanup(0);
                 break;
             }
@@ -285,23 +273,23 @@ impl Worker {
         true
     }
 
-    pub fn run(&mut self) -> bool {
-        if self.m_stop {
-            let _ = self.m_lua.table_call(&self.m_namespace, "stop");
-            self.m_running = false;
+    pub fn run(&mut self) {
+        while self.m_running {
+            if self.m_stop {
+                let _ = self.m_lua.table_call(&self.m_namespace, "stop");
+                self.m_running = false;
+            }
+            let _ = self.m_lua.table_call(&self.m_namespace, "run"); 
         }
-        let _ = self.m_lua.table_call(&self.m_namespace, "run");
-        self.m_running
     }
 
-    pub fn start(&mut self, mut wrappr: WorkerWrapper) {
+    pub fn start(&mut self, mut wrappr: PtrWrapper<Worker>) {
         if self.m_thread.is_some() {
             return;
         }
+        wrappr.init();
         self.m_thread = Some(thread::spawn(move || {
-            let worker = unsafe { wrappr.as_mut() };
-            worker.run();
+            wrappr.run();
         }));
     }
-
 }

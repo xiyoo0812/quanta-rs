@@ -6,8 +6,9 @@ use std::sync::Mutex;
 use std::collections::HashMap;
 
 use lua::lua_State;
-use luakit::{ steady_ms, Codec, LuaRead, LuaTable, Luakit };
-use crate::worker::{ IScheduler, Worker, WorkerCodec, WorkerWrapper};
+use libc::c_int as int;
+use luakit::{ steady_ms, Codec, LuaRead, LuaTable, Luakit, PtrWrapper };
+use crate::worker::{ lua_table_call, IScheduler, Worker, WorkerCodec};
 
 type Environs = HashMap<String, String>;
 
@@ -17,7 +18,7 @@ pub struct Scheduler {
     m_namespace: String,
     m_codec: WorkerCodec,
     m_environs: Environs,
-    m_workers: DashMap<String, WorkerWrapper>,
+    m_workers: DashMap<String, PtrWrapper<Worker>>,
 }
 
 impl Scheduler {
@@ -51,11 +52,10 @@ impl Scheduler {
         let envs: Environs = LuaRead::lua_to_native(L, 3).unwrap();
         let mut workor = Box::new(Worker::new(self, name.clone(), self.m_namespace.clone()));
         workor.setup(self.m_environs.clone(), envs, conf);
-        let wapper = WorkerWrapper::new(workor);
+        let wapper = PtrWrapper::new(workor);
         self.m_workers.insert(name, wapper.clone());
-        let mut nwapper = wapper.clone();
-        let worker = unsafe { nwapper.as_mut() };
-        worker.start(wapper);
+        let mut worker = wapper.clone();
+        worker.start(wapper.clone());
         true
     }
     
@@ -91,13 +91,7 @@ impl Scheduler {
             self.check_worker();
         }
         while let Some(packet_len) = self.m_codec.touch() {
-            // m_lua->table_call(ns, "on_scheduler", nullptr, &m_codec, std::tie());
-            // if (m_codec.failed()) {
-            //     m_read_buf->clean();
-            //     break;
-            // }
-            let x = self.m_codec.decode(L);
-            if x.is_err() {
+            if !lua_table_call(L, &mut self.m_codec, &self.m_namespace, "on_scheduler") {
                 self.m_codec.cleanup(0);
                 break;
             }
@@ -110,25 +104,21 @@ impl Scheduler {
 }
 
 impl IScheduler for Scheduler {
-    fn broadcast(&mut self, L: *mut lua_State) -> i32{
+    fn broadcast(&mut self, L: *mut lua_State) -> int{
         let data = self.m_codec.encode(L, 2);
-        for wapper in self.m_workers.iter() {
-            let mut nwapper = wapper.clone();
-            let worker = unsafe { nwapper.as_mut() };
+        for mut worker in self.m_workers.iter_mut() {
             worker.call(&data);
         }
         0
     }
-    fn call(&mut self, L: *mut lua_State, name: &str) -> i32{
+    fn call(&mut self, L: *mut lua_State, name: &str) -> int{
         let data = self.m_codec.encode(L, 2);
         if name == "master" {
             let ok = self.m_codec.call(&data);
             unsafe{ lua::lua_pushboolean(L, ok as i32) };
             return 1;
         }
-        if let Some(wapper) = self.m_workers.get(name) {
-            let mut nwapper = wapper.clone();
-            let worker = unsafe { nwapper.as_mut() };
+        if let Some(mut worker) = self.m_workers.get_mut(name) {
             let ok = worker.call(&data);
             unsafe{ lua::lua_pushboolean(L, ok as i32) };
             return 1;

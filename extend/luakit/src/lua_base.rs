@@ -1,9 +1,9 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-use std::env;
 use lua::lua_State;
 use libc::c_int as int;
+use std::{env, ops::{Deref, DerefMut}};
 
 pub struct LuaGuard {
     m_top: int,
@@ -60,4 +60,37 @@ pub fn is_lua_array(L: *mut lua_State, idx: i32, emy_as_arr: bool) -> bool {
         curlen += 1;
     }
     return curlen == raw_len;
+}
+
+pub struct PtrWrapper<T>{
+    ptr : *mut T
+}
+impl<T> PtrWrapper<T> {
+    pub fn new(worker: Box<T>) -> Self {
+        PtrWrapper { ptr: Box::into_raw(worker) }
+    }
+    pub fn unwrap(self) -> Box<T> {
+        unsafe { Box::from_raw(self.ptr) }
+    }
+}
+unsafe impl<T> Send for PtrWrapper<T> {}
+unsafe impl<T> Sync for PtrWrapper<T> {}
+
+impl<T> Deref for PtrWrapper<T>  {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        unsafe{ &(*self.ptr) }
+    }
+}
+
+impl<T> Clone for PtrWrapper<T> {
+    fn clone(&self) -> Self {
+        PtrWrapper { ptr: self.ptr }
+    }
+}
+
+impl<T> DerefMut for PtrWrapper<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe{ &mut *self.ptr }
+    }
 }
