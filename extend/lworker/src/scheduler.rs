@@ -35,7 +35,7 @@ impl Scheduler {
 
     pub fn setup(&mut self, L: *mut lua_State, namespace: String) -> bool {
         let kit = Luakit::load(L);
-        if let Some(quanta) = kit.get::<LuaTable>("quanta") {
+        if let Some(quanta) = kit.get::<LuaTable>(&namespace) {
             if let Some(envs) = quanta.get::<&str, Environs>("environs"){
                 self.m_namespace = namespace;
                 self.m_environs = envs;

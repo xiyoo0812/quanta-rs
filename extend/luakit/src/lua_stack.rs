@@ -217,8 +217,9 @@ impl<K, V> LuaRead for HashMap<K, V> where K: LuaRead + Eq + std::hash::Hash, V:
     fn lua_to_native(L: *mut lua_State, index: i32) -> Option<HashMap<K, V>> {
         let mut map = HashMap::new();
         unsafe {
+            let i = lua::lua_absindex(L, index);
             lua::lua_pushnil(L);
-            while lua::lua_next(L, index) != 0 {
+            while lua::lua_next(L, i) != 0 {
                 let key = K::lua_to_native(L, -2).unwrap();
                 let val = V::lua_to_native(L, -1).unwrap();
                 map.insert(key, val);

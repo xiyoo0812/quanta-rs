@@ -239,10 +239,9 @@ impl Worker {
     
     pub fn init(&mut self) -> bool {
         let mut quanta = self.m_lua.new_table(Some(&self.m_namespace));
-        quanta.set("master", true);
-        quanta.set("thread", "quanta");
         quanta.set("pid", process::id());
         quanta.set("tid", thread::current().id());
+        quanta.set("thread", self.m_name.clone());
         quanta.set("platform", luakit::get_platform());
         quanta.set("environs", self.m_environs.clone());
         luakit::set_function!(quanta, "stop", || self.m_running = false );

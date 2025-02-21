@@ -369,10 +369,12 @@ pub fn to_string(s: *const char) -> String {
 }
 
 pub fn from_cstr<'a>(s: *const char) -> &'a [u8] {
+    if s == ptr::null() { return &[]; }
     unsafe { CStr::from_ptr(s).to_bytes() }
 }
 
 pub fn from_cstrlen<'a>(s: *const char, l: size_t) -> &'a [u8] {
+    if s == ptr::null() { return &[]; }
     unsafe { std::slice::from_raw_parts(s as *const u8, l) }
 }
 

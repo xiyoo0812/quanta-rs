@@ -24,7 +24,7 @@ thread_local! {
 pub extern "C" fn luaopen_lworker(L: *mut lua_State) -> int {
     let mut kit = Luakit::load(L);
     let mut lworker = kit.new_table(Some("worker"));
-    luakit::set_function!(lworker, "startup", |L: *mut lua_State, ns: String| {
+    luakit::set_function!(lworker, "setup", |L: *mut lua_State, ns: String| {
         SCHEDULER.with_borrow_mut(|scheduler| scheduler.setup(L, ns))
     });
     luakit::set_function!(lworker, "shutdown", || {
