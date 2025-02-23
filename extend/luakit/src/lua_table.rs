@@ -31,7 +31,7 @@ impl LuaTable {
         return self.m_L;
     }
 
-    pub fn get<K, R>(&mut self, key: K) -> Option<R> where K: LuaPush, R: LuaRead {
+    pub fn get<K, R>(&self, key: K) -> Option<R> where K: LuaPush, R: LuaRead {
         let _gl = LuaGuard::new(self.m_L);
         unsafe { lua::lua_rawgeti(self.m_L, lua::LUA_REGISTRYINDEX, self.m_index); }
         key.native_to_lua(self.m_L);

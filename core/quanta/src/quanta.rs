@@ -174,19 +174,13 @@ impl Quanta {
         //加载sandbox和entry
         if let Some(sandbox) = self.get_env("QUANTA_SANDBOX") {
             if let Some(entry) = self.get_env("QUANTA_ENTRY") {
-                match self.m_lua.run_script(format!("require '{}'\0", sandbox)) {
-                    Ok(_) => {},
-                    Err(e) => {
-                        println!("require sandbox Error: {}", e);
-                        return false;
-                    }
+                if let Err(e) = self.m_lua.run_script(format!("require '{}'\0", sandbox)) {
+                    println!("require sandbox Error: {}", e);
+                    return false;
                 }
-                match self.m_lua.run_script(format!("require '{}'\0", entry)) {
-                    Ok(_) => {},
-                    Err(e) => {
-                        println!("require entry {} error: {}", entry, e);
-                        return false;
-                    }
+                if let Err(e) = self.m_lua.run_script(format!("require '{}'\0", entry)) {
+                    println!("require entry {} error: {}", entry, e);
+                    return false;
                 }
                 return true;
             }

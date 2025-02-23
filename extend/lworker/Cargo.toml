@@ -10,5 +10,6 @@ crate-type =["cdylib"]
 
 [dependencies]
 libc = "0.2.169"
+dashmap = "6.1.0"
 lua = { path = "../lua"}
 luakit = { path = "../luakit"}

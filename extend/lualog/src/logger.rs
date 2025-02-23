@@ -2,15 +2,14 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-use std::thread;
 use std::process;
 use lua::ternary;
 use dashmap::DashMap;
 use std::path::PathBuf;
 use std::time::Duration;
-use std::thread::JoinHandle;
 use std::sync::{ Arc, Mutex };
 use std::fs::{ self, OpenOptions };
+use std::thread::{ self, JoinHandle };
 use memmap2::{ MmapOptions, MmapMut };
 use chrono::{ Local, DateTime, Datelike, Timelike };
 
@@ -41,7 +40,7 @@ pub enum LogLevel {
 trait LogDest {
     fn build_prefix(&mut self, log: &LogMessage, iprefix: bool) -> String {
         if !iprefix {
-            return format!("[{}.{:03}][{}]", log.time.format("%Y-%m-%d %H:%M:%S"), log.time.timestamp_subsec_millis(), LEVEL_NAMES[log.level as usize]);
+            return format!("[{}.{:03}][{}][{}]", log.time.format("%Y-%m-%d %H:%M:%S"), log.time.timestamp_subsec_millis(), log.tag, LEVEL_NAMES[log.level as usize]);
         }
         "".to_string()
     }

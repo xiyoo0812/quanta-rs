@@ -5,6 +5,7 @@ use std::thread;
 use once_cell::sync::OnceCell;
 use std::time::{ Duration, Instant, SystemTime, UNIX_EPOCH};
 
+//这里有多dll加载的问题，使用时需要注意
 static STEADY_EPOCH: OnceCell<Instant> = OnceCell::new();
 
 fn get_steady_epoch() -> &'static Instant {

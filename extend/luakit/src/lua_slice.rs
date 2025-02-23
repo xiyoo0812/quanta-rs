@@ -38,6 +38,19 @@ impl<'a> Slice<'a> {
         }
     }
 
+    pub fn touch<T: Copy + Default>(&self) -> Option<T> {
+        let size = std::mem::size_of::<T>();
+        let end = self.pos + size;
+        if end > self.data.len() {
+            return None;
+        }
+        let value = unsafe {
+            let ptr = self.data.as_ptr().add(self.pos) as *const T;
+            ptr.read_unaligned()
+        };
+        Some(value)
+    }
+
     pub fn read<T: Copy + Default>(&mut self) -> Option<T> {
         let size = std::mem::size_of::<T>();
         let end = self.pos + size;
@@ -52,8 +65,7 @@ impl<'a> Slice<'a> {
         Some(value)
     }
 
-    pub fn data(&self, len: *mut i32) -> &[u8] {
-        unsafe { *len = self.size() as i32 }; 
+    pub fn data(&self) -> &[u8] {
         &self.data[self.pos..]
     }
 
@@ -67,7 +79,7 @@ impl<'a> Slice<'a> {
         data
     }
 
-    pub fn contents(&self) -> &[u8] {
+    pub fn contents(&self) -> &'a [u8] {
         &self.data[self.pos..]
     }
 

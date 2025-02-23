@@ -68,7 +68,7 @@ impl Luakit {
         unsafe { lua::lua_setglobal(self.m_L, to_char!(key)); }
     }
 
-    pub fn get<R>(&mut self, key: &str) -> Option<R> where R: LuaRead {
+    pub fn get<R>(&self, key: &str) -> Option<R> where R: LuaRead {
         let _gl = LuaGuard::new(self.m_L);
         unsafe { lua::lua_getglobal(self.m_L, to_char!(key)); }
         return LuaRead::lua_to_native(self.m_L, -1);

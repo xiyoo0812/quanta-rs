@@ -54,12 +54,12 @@ local function init_mainloop()
         signal.init()
         logger.init()
         if environ.status("QUANTA_THREAD") then
-            -- require("lworker")
-            -- import("feature/scheduler.lua")
+            require("lworker")
+            import("feature/scheduler.lua")
         end
     else
         --子线程
-        -- import("feature/worker.lua")
+        import("feature/worker.lua")
     end
 end
 
