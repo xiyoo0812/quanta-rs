@@ -5,6 +5,7 @@ members = [
     "extend/luakit",
     "extend/lualog",
     "extend/lssl",
+    "extend/lcsv",
     "extend/luapb",
     "extend/ljson",
     "extend/ltoml",

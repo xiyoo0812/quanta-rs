@@ -19,7 +19,7 @@ pub fn hash_code(L: *mut lua_State) -> u64 {
         lua::LUA_TSTRING => calculate_hash(&lua::to_utf8(lua::lua_tolstring(L, 1))),
         _ => lua::luaL_error(L, "hashkey only support number or string!")
     };
-    let modv = lua::luaL_optinteger(L, 2, 0);
+    let modv = lua::luaL_optinteger(L, 2, 0) as u64;
     if modv > 0 {
         value %= modv;
     }

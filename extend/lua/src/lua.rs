@@ -240,6 +240,8 @@ extern "C" {
     pub fn lua_next(L: *mut lua_State, idx: int) -> int;
     pub fn lua_concat(L: *mut lua_State, n: int);
     pub fn lua_len(L: *mut lua_State, idx: int);
+    #[link_name = "lua_stringtonumber"]
+    pub fn lua_stringtonumber_(L: *mut lua_State, s: *const char) -> size_t;
 
     pub fn luaL_setfuncs(L: *mut lua_State, l: *const luaL_Reg, nup: int);
 
@@ -429,6 +431,10 @@ pub fn lua_pushlstring(L: *mut lua_State, val: &str) {
     unsafe { lua_pushlstring_(L, to_char!(val), val.len()) };
 }
 
+pub fn lua_stringtonumber(L: *mut lua_State, val: &str) -> bool {
+    unsafe { lua_stringtonumber_(L, to_char!(val)) > 0 }
+}
+
 pub fn luaL_checknumber(L: *mut lua_State, arg: int) -> f64 {
     unsafe { luaL_checknumber_(L, arg) }
 }
@@ -441,8 +447,8 @@ pub fn luaL_checkinteger(L: *mut lua_State, arg: int) -> u64 {
     unsafe { luaL_checkinteger_(L, arg) as u64 }
 }
 
-pub fn luaL_optinteger(L: *mut lua_State, i: int, def: u64) -> u64 {
-    unsafe { luaL_optinteger_(L, i, def as isize) as u64 }
+pub fn luaL_optinteger(L: *mut lua_State, i: int, def: isize) -> isize {
+    unsafe { luaL_optinteger_(L, i, def) }
 }
 
 pub fn lua_tonumber(L: *mut lua_State, i: int) -> lua_Number {

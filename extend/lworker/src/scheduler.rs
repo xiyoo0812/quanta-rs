@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use lua::lua_State;
 use libc::c_int as int;
-use luakit::{ Codec, LuaRead, LuaTable, Luakit, PtrWrapper };
+use luakit::{ Codec, LuaRead, LuaTable, Luakit, PtrBox };
 use crate::worker::{ lua_table_call, IScheduler, Worker, WorkerCodec};
 
 type Environs = HashMap<String, String>;
@@ -18,7 +18,7 @@ pub struct Scheduler {
     m_namespace: String,
     m_codec: WorkerCodec,
     m_environs: Environs,
-    m_workers: DashMap<String, PtrWrapper<Worker>>,
+    m_workers: DashMap<String, PtrBox<Worker>>,
 }
 
 impl Scheduler {
@@ -50,9 +50,9 @@ impl Scheduler {
             return false;
         }
         let envs: Environs = LuaRead::lua_to_native(L, 3).unwrap();
-        let mut workor = Box::new(Worker::new(self, name.clone(), self.m_namespace.clone()));
+        let mut workor = Worker::new(self, name.clone(), self.m_namespace.clone());
         workor.setup(self.m_environs.clone(), envs, conf);
-        let wapper = PtrWrapper::new(workor);
+        let wapper = PtrBox::new(workor);
         self.m_workers.insert(name, wapper.clone());
         let mut worker = wapper.clone();
         worker.start(wapper.clone());

@@ -9,7 +9,7 @@ use std::thread::{self, JoinHandle };
 
 use lua::lua_State;
 use libc::c_int as int;
-use luakit::{ BaseCodec, Codec, CodecError, LuaBuf, LuaPushFn, LuaPushLuaFn, Luakit, PtrWrapper };
+use luakit::{ BaseCodec, Codec, CodecError, LuaBuf, LuaPushFn, LuaPushLuaFn, Luakit, PtrBox };
 
 type Environs = HashMap<String, String>;
 
@@ -283,7 +283,7 @@ impl Worker {
         }
     }
 
-    pub fn start(&mut self, mut wrappr: PtrWrapper<Worker>) {
+    pub fn start(&mut self, mut wrappr: PtrBox<Worker>) {
         if self.m_thread.is_some() {
             return;
         }

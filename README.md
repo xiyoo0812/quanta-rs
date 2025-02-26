@@ -1,7 +1,9 @@
 # quanta
 
 # 概述
-一个基于lua的分布式游戏服务器引擎框架！
+一个基于lua + rust的分布式跨平台游戏服务器引擎框架！
+
+[quanta](https://github.com/xiyoo0812/quanta.git)的rust版本，quanta使用C++17开发，quanta-rs与C++版本保持lua级别的API兼容！两个仓库lua代码完全兼容，可以快速开发。
 
 # 优势
 - 轻量级
@@ -9,36 +11,18 @@
 - 稳定性强
 - 扩展性强
 - 热更新
+- 跨平台(WINDOWS/LINUX/MACOS)
 
 # 编译
-- msvc : 打开项目目录下的sln工程文件，编译即可。
-- linux：在项目根目录，执行make all。
-- 编译lua需要readline，请提前安装。
-- http模块依赖curl，请提前安装。
-
-# 工程
-- 本项目使用[lmake](https://github.com/xiyoo0812/lmake.git)管理
-- 根目录配置lmake
-```lua
---lmake
---工程名
-SOLUTION = "quanta"
---lmake目录
-LMAKE_DIR = "extend/lmake"
---mimalloc
-MIMALLOC = false
-```
-- 子项目配置*.lmake
-- 执行以下指令自动生成项目文件(makefile/vcxproj)
-```shell
-# lmake_dir: lmake项目路径
-# solution_dir: 工程根目录
-./lua lmake_dir/lmake.lua solution_dir
-```
+- windows: 在项目根目录执行nmake dev/pub
+- linux：在项目根目录，执行make dev/pub。
+- windows依赖nmake 编译，需要安装nmake，并设置环境变量
+- 直接使用cargo编译也可以，需要安装rust，并设置环境变量
 
 # 体验引擎
 - 配置
 在bin/config目录下，仿造quanta.conf生成配置实例，然后在bin目录执行configure.bat/configure.sh，会自动生成项目配置
+- 自动生产配置依赖[lmake](https://github.com/xiyoo0812/lmake.git)，已经内置到项目
 ```shell
 #linux
 #需要加参数配置文件名

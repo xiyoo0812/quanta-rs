@@ -14,10 +14,10 @@ use std::cell::RefCell;
 use crate::worker::IScheduler;
 use crate::scheduler::Scheduler;
 
-use luakit::{ Luakit, LuaPush, LuaPushFn, LuaPushLuaFn, PtrWrapper };
+use luakit::{ Luakit, LuaPush, LuaPushFn, LuaPushLuaFn, PtrBox };
 
 thread_local! {
-    static SCHEDULER: RefCell<PtrWrapper<Scheduler>> = RefCell::new(PtrWrapper::new(Box::new(Scheduler::new())));
+    static SCHEDULER: RefCell<PtrBox<Scheduler>> = RefCell::new(PtrBox::new(Scheduler::new()));
 }
 
 #[no_mangle]

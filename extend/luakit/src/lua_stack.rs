@@ -5,11 +5,12 @@ use libc::c_char as char;
 use libc::c_void as void;
 use lua::{cstr, to_char, lua_State};
 
+use std::ptr;
 use std::thread::ThreadId;
 use std::collections::HashMap;
 
 use crate::lua_get_meta_name;
-use crate::lua_base::LuaGuard;
+use crate::lua_base::{LuaGuard, PtrBox};
 
 pub trait LuaPush {
     fn native_to_lua(self, L: *mut lua_State) -> i32;
@@ -57,12 +58,19 @@ impl<T> LuaRead for Box<T> {
     }
 }
 
-impl LuaRead for *mut void {
-    fn lua_to_native(L: *mut lua_State, index: i32) -> Option<*mut void> {
+impl <T> LuaPush for PtrBox<T> {
+    fn native_to_lua(self, L: *mut lua_State) -> i32 {
+        lua_push_userdata(L, self.ptr)
+    }
+}
+
+impl<T> LuaRead for PtrBox<T> {
+    fn lua_to_native(L: *mut lua_State, index: i32) -> Option<PtrBox<T>> {
         if !lua::lua_isuserdata(L, index) {
             return None
         }
-        Some(lua_load_userdata(L, index))
+        let pvoid = lua_load_userdata(L, index);
+        Some(PtrBox::load(pvoid as *mut T))
     }
 }
 
@@ -371,6 +379,10 @@ pub fn lua_load_userdata(L : *mut lua_State, index: i32) -> *mut void  {
 
 pub fn lua_push_userdata<T>(L : *mut lua_State, obj: *mut T) -> i32  {
     unsafe {
+        if obj == ptr::null_mut() {
+            lua::lua_pushnil(L);
+            return 1;
+        }
         //__objects__
         lua::lua_getfield(L, lua::LUA_REGISTRYINDEX, cstr!("__objects__"));
         if lua::lua_isnil(L, -1) {
