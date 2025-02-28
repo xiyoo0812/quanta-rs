@@ -102,7 +102,7 @@ pub fn lstdfs_mkdir(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let res = fs::create_dir_all(path);
     match res {
-        Ok(_) => luakit::variadic_return!(L, true),
+        Ok(_) => true.native_to_lua(L),
         Err(e) => luakit::variadic_return!(L, false, e.to_string())
     }
 }
@@ -110,7 +110,7 @@ pub fn lstdfs_mkdir(L: *mut lua_State) -> int {
 pub fn lstdfs_remove_file(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     match fs::remove_file(path) {
-        Ok(_) => luakit::variadic_return!(L, true),
+        Ok(_) => true.native_to_lua(L),
         Err(e) => luakit::variadic_return!(L, false, e.to_string())
     }
 }
@@ -120,7 +120,7 @@ pub fn lstdfs_remove(L: *mut lua_State) -> int {
     let rmall = lua::lua_toboolean(L, 2);
     let res = if rmall { fs::remove_dir_all(path) } else { fs::remove_dir(path) };
     match res {
-        Ok(_) => luakit::variadic_return!(L, true),
+        Ok(_) => true.native_to_lua(L),
         Err(e) => luakit::variadic_return!(L, false, e.to_string())
     }
 }
@@ -130,7 +130,7 @@ pub fn lstdfs_copy_file(L: *mut lua_State) -> int {
     let to = lua::to_utf8(lua::lua_tolstring(L, 2));
     let res = fs::copy(from, to);
     match res {
-        Ok(_) => luakit::variadic_return!(L, true),
+        Ok(_) => true.native_to_lua(L),
         Err(e) => luakit::variadic_return!(L, false, e.to_string())
     }
 }
@@ -140,7 +140,7 @@ pub fn lstdfs_copy(L: *mut lua_State) -> int {
     let to = lua::to_utf8(lua::lua_tolstring(L, 2));
     let res = copy_dir_all(from, to);
     match res {
-        Ok(_) => luakit::variadic_return!(L, true),
+        Ok(_) => true.native_to_lua(L),
         Err(e) => luakit::variadic_return!(L, false, e.to_string())
     }
 }
@@ -150,7 +150,7 @@ pub fn lstdfs_rename(L: *mut lua_State) -> int {
     let pnew = lua::to_utf8(lua::lua_tolstring(L, 2));
     let res = fs::rename(pold, pnew);
     match res {
-        Ok(_) => luakit::variadic_return!(L, true),
+        Ok(_) => true.native_to_lua(L),
         Err(e) => luakit::variadic_return!(L, false, e.to_string())
     }
 }
@@ -158,57 +158,58 @@ pub fn lstdfs_rename(L: *mut lua_State) -> int {
 pub fn lstdfs_stem(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let fpath = Path::new(path.as_str());
-    return luakit::variadic_return!(L, fpath.file_stem().unwrap().to_str().unwrap());
+    fpath.file_stem().unwrap().to_str().unwrap().native_to_lua(L)
 }
 
 pub fn lstdfs_filename(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let fpath = Path::new(path.as_str());
-    return luakit::variadic_return!(L, fpath.file_name().unwrap().to_str().unwrap());
+    fpath.file_name().unwrap().to_str().unwrap().native_to_lua(L)
 }
 
 pub fn lstdfs_extension(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let fpath = Path::new(path.as_str());
-    return luakit::variadic_return!(L, fpath.extension().unwrap().to_str().unwrap());
+    let ext = format!(".{}", fpath.extension().unwrap().to_str().unwrap());
+    ext.native_to_lua(L)
 }
 
 pub fn lstdfs_parent_path(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let fpath = Path::new(path.as_str());
-    return luakit::variadic_return!(L, fpath.parent().unwrap().to_str().unwrap());
+    fpath.file_name().unwrap().to_str().unwrap().native_to_lua(L)
 }
 
 pub fn lstdfs_append(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let append = lua::to_utf8(lua::lua_tolstring(L, 2));
     let fpath = Path::new(path.as_str());
-    return luakit::variadic_return!(L, fpath.join(append).to_str().unwrap());
+    fpath.join(append).to_str().unwrap().native_to_lua(L)
 }
 
 pub fn lstdfs_concat(L: *mut lua_State) -> int {
     let mut path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let append = lua::to_utf8(lua::lua_tolstring(L, 2));
     path.push_str(append.as_str());
-    return luakit::variadic_return!(L, path);
+    path.native_to_lua(L)
 }
 
 pub fn lstdfs_exists(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let fpath = Path::new(path.as_str());
-    return luakit::variadic_return!(L, fpath.exists());
+    fpath.exists().native_to_lua(L)
 }
 
 pub fn lstdfs_is_directory(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let fpath = Path::new(path.as_str());
-    return luakit::variadic_return!(L, fpath.is_dir());
+    fpath.is_dir().native_to_lua(L)
 }
 
 pub fn lstdfs_is_absolute(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let fpath = Path::new(path.as_str());
-    return luakit::variadic_return!(L, fpath.is_absolute());
+    fpath.is_absolute().native_to_lua(L)
 }
 
 pub fn lstdfs_split(L: *mut lua_State) -> int {
@@ -224,25 +225,25 @@ pub fn lstdfs_split(L: *mut lua_State) -> int {
 pub fn lstdfs_filetype(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let meta = fs::metadata(path);
-    return luakit::variadic_return!(L, get_file_type(&meta));
+    get_file_type(&meta).native_to_lua(L)
 }
 
 pub fn lstdfs_file_size(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let meta = fs::metadata(path);
-    return luakit::variadic_return!(L, metadata_find!(meta, file_size, 0));
+    metadata_find!(meta, file_size, 0).native_to_lua(L)
 }
 
 pub fn lstdfs_last_write_time(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let meta = fs::metadata(path);
-    return luakit::variadic_return!(L, metadata_find!(meta, last_write_time, 0));
+    metadata_find!(meta, last_write_time, 0).native_to_lua(L)
 }
 
 pub fn lstdfs_current_path(L: *mut lua_State) -> int {
     let res = env::current_dir();
     match res {
-        Ok(path) => luakit::variadic_return!(L, path.to_str().unwrap()),
+        Ok(path) => path.to_str().unwrap().native_to_lua(L),
         Err(e) => luakit::variadic_return!(L, lua::LUA_NIL, e.to_string())
     }
 }
@@ -251,22 +252,21 @@ pub fn lstdfs_chdir(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let res = env::set_current_dir(path);
     match res {
-        Ok(_) => luakit::variadic_return!(L, true),
+        Ok(_) => true.native_to_lua(L),
         Err(e) => luakit::variadic_return!(L, false, e.to_string())
     }
 }
 
 pub fn lstdfs_temp_dir(L: *mut lua_State) -> int {
-    let path = env::temp_dir();
-    return luakit::variadic_return!(L, path.to_str().unwrap());
+    env::temp_dir().to_str().unwrap().native_to_lua(L)
 }
 
 pub fn lstdfs_absolute(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let res = path::absolute(path.clone());
     match res {
-        Ok(abs) => luakit::variadic_return!(L, abs.to_str().unwrap()),
-        Err(_) => luakit::variadic_return!(L, path)
+        Ok(abs) => abs.to_str().unwrap().native_to_lua(L),
+        Err(_) => path.native_to_lua(L)
     }
 }
 
@@ -274,8 +274,8 @@ pub fn lstdfs_relative(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let base = lua::to_utf8(lua::lua_tolstring(L, 2));
     match get_relative_path(base, path) {
-        Some(p) => luakit::variadic_return!(L, p.to_str().unwrap()),
-        None => luakit::variadic_return!(L, "")
+        Some(p) => p.to_str().unwrap().native_to_lua(L),
+        None => "".native_to_lua(L)
     }
 }
 
@@ -284,11 +284,11 @@ pub fn lstdfs_make_preferred(L: *mut lua_State) -> int {
     let fpath = Path::new(path.as_str());
     #[cfg(windows)]
     {
-        luakit::variadic_return!(L, fpath.to_string_lossy().replace("/", "\\"))
+        fpath.to_string_lossy().replace("/", "\\").native_to_lua(L)
     }
     #[cfg(not(windows))]
     {
-        luakit::variadic_return!(L, fpath.to_string_lossy().replace("/", "\\"))
+        fpath.to_string_lossy().replace("/", "\\").native_to_lua(L)
     }
 }
 
@@ -303,9 +303,9 @@ pub fn lstdfs_root_name(L: *mut lua_State) -> int {
                 _ => break,
             }
         }
-        luakit::variadic_return!(L, result.to_str().unwrap())
+        result.to_str().unwrap().native_to_lua(L)
     } else {
-        luakit::variadic_return!(L, "".to_string())
+        "".native_to_lua(L)
     }
 }
 
@@ -321,9 +321,9 @@ pub fn lstdfs_root_path(L: *mut lua_State) -> int {
                 _ => break,
             }
         }
-        luakit::variadic_return!(L, result.to_str().unwrap())
+        result.to_str().unwrap().native_to_lua(L)
     } else {
-        luakit::variadic_return!(L, "".to_string())
+        "".native_to_lua(L)
     }
 }
 
@@ -338,9 +338,9 @@ pub fn lstdfs_relative_path(L: *mut lua_State) -> int {
                 _ => result.push(component.as_os_str()),
             }
         }
-        luakit::variadic_return!(L, result.to_str().unwrap())
+        result.to_str().unwrap().native_to_lua(L)
     } else {
-        luakit::variadic_return!(L, fpath.to_path_buf().to_str().unwrap())
+        fpath.to_path_buf().to_str().unwrap().native_to_lua(L)
     }
 }
 
@@ -348,24 +348,24 @@ pub fn lstdfs_replace_extension(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let ext = lua::to_utf8(lua::lua_tolstring(L, 2));
     let fpath = Path::new(path.as_str());
-    luakit::variadic_return!(L, fpath.with_extension(ext).to_str().unwrap())
+    fpath.with_extension(ext).to_str().unwrap().native_to_lua(L)
 }
 
 pub fn lstdfs_replace_filename(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let fname = lua::to_utf8(lua::lua_tolstring(L, 2));
     let fpath = Path::new(path.as_str());
-    luakit::variadic_return!(L, fpath.with_file_name(fname).to_str().unwrap())
+    fpath.with_file_name(fname).to_str().unwrap().native_to_lua(L)
 }
 
 pub fn lstdfs_remove_filename(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
     let fpath = Path::new(path.as_str());
     if fpath.as_os_str().to_str().map_or(false, |s| s.ends_with(MAIN_SEPARATOR)) {
-        return luakit::variadic_return!(L, fpath.to_path_buf().to_str().unwrap());
+        return fpath.to_path_buf().to_str().unwrap().native_to_lua(L);
     }
     match fpath.parent() {
-        Some(parent) => luakit::variadic_return!(L, parent.to_path_buf().to_str().unwrap()),
-        None => luakit::variadic_return!(L, "".to_string()),
+        Some(parent) => parent.to_path_buf().to_str().unwrap().native_to_lua(L),
+        None => "".native_to_lua(L),
     }
 }

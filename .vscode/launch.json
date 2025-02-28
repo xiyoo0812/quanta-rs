@@ -19,6 +19,17 @@
             "cwd": "${workspaceRoot}/bin/",
             "environment": [],
             "externalConsole": true
-        }
+        },
+        {
+            "type": "cppvsdbg",
+            "request": "launch",
+            "name": "(Windows) 工具",
+            "program": "${workspaceFolder}/target/debug/quanta.exe",
+            "args": ["--entry=convertor",  "--input=./", "--output=../server/config", "--allsheet=1"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceRoot}/deploy/",
+            "environment": [{ "name": "LUA_PATH", "value": "!/../../tools/excel2lua/?.lua;;"}],
+            "externalConsole": true
+        },
     ]
 }

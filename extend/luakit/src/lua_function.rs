@@ -67,7 +67,7 @@ impl<O, M> ClassMemberAdapter<O, M> for ClassMemberWrapper<O, M> where M: Clone 
     fn get(&mut self, obj: &mut O) -> M {
         unsafe {
             let ptr = (obj as *mut O as *mut u8).add(self.offset) as *mut M;
-            ptr.read().clone()
+            (*ptr).clone()
         }
     }
     fn set(&mut self, obj: &mut O, params: M) {

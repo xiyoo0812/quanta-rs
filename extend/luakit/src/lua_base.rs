@@ -76,6 +76,9 @@ impl<T> PtrBox<T> {
     pub fn null() -> Self {
         PtrBox { ptr: ptr::null_mut() }
     }
+    pub fn is_null(&self) -> bool {
+        self.ptr.is_null()
+    }
     pub fn unwrap(self) -> Box<T> {
         unsafe { Box::from_raw(self.ptr) }
     }

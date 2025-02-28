@@ -1,12 +1,12 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-use std::path::Path;
-
+use lua::lua_State;
 use libc::c_int as int;
-use lua::{ ternary, lua_State };
 
 use luakit::{LuaGc, PtrBox, LuaPush};
+
+use calamine::{ Reader, Xlsx, Data };
 
 #[repr(C)]
 pub struct Cell {
@@ -18,12 +18,20 @@ impl LuaGc for Cell {
     fn __gc(&mut self) -> bool { false }
 }
 
-impl Cell {
-    fn new(value: &str) -> Self {
-        Cell {
-            value: value.to_string(),
-            typ: ternary!(value.is_empty(), "blank".to_string(), "string".to_string())
-        }
+impl Cell {    
+    fn new(data: &Data) -> Self {
+        let (value, typ) = match data {
+            Data::Int(i) => (i.to_string(), "number".to_string()),
+            Data::Bool(b) => (b.to_string(), "bool".to_string()),
+            Data::String(s) => (s.clone(), "string".to_string()),
+            Data::Float(f) => (f.to_string(), "number".to_string()),
+            Data::DateTimeIso(b) => (b.to_string(), "string".to_string()),
+            Data::DurationIso(b) => (b.to_string(), "string".to_string()),
+            Data::DateTime(b) => (b.to_string(), "string".to_string()),
+            Data::Empty => ("".to_string(), "blank".to_string()),
+            _ => ("".to_string(), "blank".to_string()),
+        };
+        Cell { typ, value }
     }
 }
 
@@ -68,21 +76,21 @@ impl Sheet {
         self.cells.get(idx).cloned()
     }
 
-    pub fn add_cell(&mut self, row: usize, col: usize, value: &str) {
+    pub fn add_cell(&mut self, row: usize, col: usize, data: &Data) {
         if row < self.first_row || row > self.last_row || col < self.first_col || col > self.last_col{
             return;
         }
         let idx = (row - 1) * (self.last_col - self.first_col + 1) + (col - self.first_col);
-        self.cells[idx] = PtrBox::new(Cell::new(value));
+        self.cells[idx] = PtrBox::new(Cell::new(data));
     }
 }
 
-pub struct CsvFile {
+pub struct ExcelFile {
     sheets: Vec<PtrBox<Sheet>>
 }
 
-impl LuaGc for CsvFile {}
-impl Drop for CsvFile {
+impl LuaGc for ExcelFile {}
+impl Drop for ExcelFile {
     fn drop(&mut self) {
         for sheet in self.sheets.iter() {
             sheet.clone().unwrap();
@@ -90,38 +98,31 @@ impl Drop for CsvFile {
     }
 }
 
-impl CsvFile {
+impl ExcelFile {
     pub fn new() -> Self {
-        CsvFile { sheets: Vec::new() }
+        ExcelFile { sheets: Vec::new() }
     }
 
-    pub fn open(&mut self, path: String) -> bool {
-        let fpath = Path::new(path.as_str());
-        if let Ok(mut rdr) = csv::Reader::from_path(&path){
-            let mut sheet = Sheet::new(fpath.file_stem().unwrap().to_str().unwrap());
-            let headers =  rdr.headers().unwrap();
-            let col_num = headers.len();
-            if col_num > 0 {
+
+    pub fn open(&mut self, path: String) -> bool { 
+        let mut workbook: Xlsx<_> = match calamine::open_workbook(&path) {
+            Ok(wb) => wb,
+            Err(_) => return false
+        };
+        for name in workbook.sheet_names().to_owned() {
+            let mut sheet = Sheet::new(&name);
+            if let Ok(range) = workbook.worksheet_range(&name) {
+                let (nrow, ncol) = range.get_size();
                 sheet.first_row = 1;
                 sheet.first_col = 1;
-                sheet.last_row = 1;
-                sheet.last_col = col_num;
-                let (mut irow, mut icol) = (1, 1);
-                sheet.cells.resize(irow * col_num, PtrBox::null());
-                for h in headers.iter() {
-                    sheet.add_cell(irow, icol, h);
-                    icol += 1;
-                }
-                for result in rdr.records() {
-                    if let Err(_) = result {
-                        return false;
-                    }
-                    irow += 1; icol = 1;
-                    sheet.last_row = irow;
-                    sheet.cells.resize(irow * col_num, PtrBox::null());
-                    for value in result.unwrap().iter() {
-                        sheet.add_cell(irow, icol, value);
-                        icol += 1;
+                sheet.last_col = ncol;
+                sheet.last_row = nrow;
+                sheet.cells.resize(nrow * ncol, PtrBox::null());
+                for irow in 1..=nrow {
+                    for icol in 1..=ncol {
+                        if let Some(data) = range.get((irow - 1, icol - 1)) {
+                            sheet.add_cell(irow, icol, data);
+                        }
                     }
                 }
             }

@@ -78,7 +78,7 @@ fn serialize_udata(buff: &mut LuaBuf, data: *const void) {
 fn serialize_crcn(buff: &mut LuaBuf, count: u8, line: bool) {
     if line {
         serialize_value(buff, "\n".as_bytes());
-        for _ in 1..=count {
+        for _ in 1..count {
             serialize_value(buff, "    ".as_bytes());
         }
     }
@@ -116,7 +116,7 @@ fn serialize_table(L: *mut lua_State, buff: &mut LuaBuf, index: int, depth: u8, 
                 lua::lua_pushvalue(L, 3);
                 lua::lua_pushvalue(L, index);
                 //执行sort方法，再序列化
-                if lua::lua_pcall(L, 1, 1, -2) == 0 {
+                if lua::lua_pcall(L, 1, 1, 0) != 0 {
                     lua::lua_error(L);
                 }
                 let index = lua::lua_absindex(L, -1);
