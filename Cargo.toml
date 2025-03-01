@@ -13,6 +13,7 @@ members = [
     "extend/lcodec",
     "extend/lstdfs",
     "extend/ltimer",
+    "extend/luaxml",
     "extend/lworker",
     "extend/luaxlsx",
     "core/quanta",

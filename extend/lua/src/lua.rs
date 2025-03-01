@@ -412,14 +412,14 @@ pub fn luaL_checklstring<'a>(L: *mut lua_State, i: int) -> &'a [u8] {
     from_cstrlen(cstr, size)
 }
 
-pub fn luaL_optstring<'a>(L: *mut lua_State, i: int, def: *const char) -> &'a [u8] {
-    let cstr = unsafe { luaL_optlstring_(L, i, def, ptr::null_mut()) };
+pub fn luaL_optstring<'a>(L: *mut lua_State, i: int) -> &'a [u8] {
+    let cstr = unsafe { luaL_optlstring_(L, i, ptr::null_mut(), ptr::null_mut()) };
     from_cstr(cstr)
 }
 
-pub fn luaL_optlstring<'a>(L: *mut lua_State, i: int, def: *const char) -> &'a [u8] {
+pub fn luaL_optlstring<'a>(L: *mut lua_State, i: int) -> &'a [u8] {
     let mut size: size_t = 0;
-    let cstr = unsafe { luaL_optlstring_(L, i, def, &mut size) };
+    let cstr = unsafe { luaL_optlstring_(L, i, ptr::null_mut(), &mut size) };
     from_cstrlen(cstr, size)
 }
 

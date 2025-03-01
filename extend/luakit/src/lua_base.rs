@@ -49,7 +49,7 @@ pub fn is_lua_array(L: *mut lua_State, idx: i32, emy_as_arr: bool) -> bool {
     unsafe { lua::lua_pushnil(L) };
     let mut curlen : isize = 0;
     while unsafe { lua::lua_next(L, index) } != 0 {
-        if lua::lua_isinteger(L, -2) {
+        if !lua::lua_isinteger(L, -2) {
             return false;
         }
         let key = lua::lua_tointeger(L, -2);
