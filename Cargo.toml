@@ -16,6 +16,7 @@ members = [
     "extend/luaxml",
     "extend/lworker",
     "extend/luaxlsx",
+    "core/luabus",
     "core/quanta",
 ]
 
