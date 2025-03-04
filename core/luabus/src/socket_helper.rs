@@ -3,6 +3,8 @@
 
 use std::net::{TcpListener, SocketAddrV4, Ipv4Addr};
 
+pub const SOCKET_RECV_LEN: usize   = 4096;
+
 pub fn derive_port(mut port: u16) -> u16 {
     for _ in 0..20 {
         let addr = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port);
