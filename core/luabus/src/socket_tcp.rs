@@ -90,7 +90,6 @@ impl SocketTcp {
     pub fn listen(&mut self, L: *mut lua_State, ip: String, port: u32) -> int {
         match TcpListener::bind(format!("{}:{}", ip, port)) {
             Ok(listener) => {
-                let _ = listener.set_nonblocking(true);
                 self.listener = Some(listener);
             },
             Err(e) => {

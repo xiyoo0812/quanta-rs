@@ -13,3 +13,4 @@ libc = "0.2.170"
 ping-rs = "0.1.2"
 lua = { path = "../../extend/lua"}
 luakit = { path = "../../extend/luakit"}
+mio = { version = "1.0.3", features = ["os-poll", "os-ext", "net"] }

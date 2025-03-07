@@ -118,6 +118,21 @@ impl LuaRead for Vec<u8>{
     }
 }
 
+impl LuaRead for Vec<u32>{
+    fn lua_to_native(L: *mut lua_State, index: i32) -> Option<Vec<u32>> {
+        let mut vec = Vec::new();
+        unsafe {
+            let len = lua::lua_rawlen(L, index);
+            for i in 1..len + 1 {
+                lua::lua_rawgeti(L, index, i as i32);
+                vec.push(u32::lua_to_native(L, i as i32).unwrap());
+                lua::lua_pop(L, 1);
+            }
+        }
+        Some(vec)
+    }
+}
+
 impl<T> LuaPush for Option<T> where T: LuaPush {
     fn native_to_lua(self, L: *mut lua_State) -> i32 {
         if let Some(val) = self {
