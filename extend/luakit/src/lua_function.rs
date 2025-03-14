@@ -129,7 +129,7 @@ macro_rules! lua_read_upvalueindex {
 macro_rules! lua_read_function_args {
     ($L:expr) => {{
         let argc = lua::lua_gettop($L);
-        let args = match LuaRead::lua_to_native($L, -argc) {
+        let args = match LuaRead::lua_to_native($L, argc) {
             Some(a) => a,
             _ => lua::luaL_error($L, &format!("wrong parameter for call function argc is {}", argc)),
         };

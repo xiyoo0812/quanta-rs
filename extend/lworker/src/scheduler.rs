@@ -85,7 +85,8 @@ impl Scheduler {
             false
         });
     }
-    pub fn update(&mut self, L: *mut lua_State, clock_ms: u64) {
+    pub fn update(&mut self, L: *mut lua_State, _clock_ms: u64) {
+        let clock_ms = luakit::steady_ms();
         if clock_ms - self.m_last_tick > 1000 {
             self.m_last_tick = clock_ms;
             self.check_worker();
@@ -99,10 +100,9 @@ impl Scheduler {
                 break;
             }
             self.m_codec.cleanup(packet_len);
-            // rust 的steady_ms 实现有BUG，暂时屏蔽
-            // if steady_ms() - clock_ms > 100 {
-            //     break;
-            // }
+            if luakit::steady_ms() - clock_ms > 100 {
+                break;
+            }
         }
     }
 }

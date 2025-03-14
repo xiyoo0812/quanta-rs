@@ -191,6 +191,7 @@ impl Worker {
         if !self.m_codec.update() {
             return;
         }
+        let clock_ms = luakit::steady_ms();
         let L = self.m_lua.L();
         while let Some(packet_len) = self.m_codec.touch() {
             if !lua_table_call(L, &mut self.m_codec, &self.m_namespace, "on_worker") {
@@ -198,10 +199,9 @@ impl Worker {
                 break;
             }
             self.m_codec.cleanup(packet_len);
-            // rust 的steady_ms 实现有BUG，暂时屏蔽
-            // if steady_ms() - _clock_ms > 100 {
-            //     break;
-            // }
+            if luakit::steady_ms() - clock_ms > 100 {
+                break;
+            }
         }
     }
 

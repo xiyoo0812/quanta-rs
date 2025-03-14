@@ -33,14 +33,14 @@ end
 --初始化网络
 local function init_network()
     require("luabus")
-    -- local max_conn = environ.number("QUANTA_MAX_CONN", 64)
-    -- socket_mgr = luabus.create_socket_mgr(max_conn)
-    -- quanta.socket_mgr = socket_mgr
+    local max_conn = environ.number("QUANTA_MAX_CONN", 64)
+    socket_mgr = luabus.create_socket_mgr(max_conn)
+    quanta.socket_mgr = socket_mgr
     --加载协议
     import("kernel/protobuf_mgr.lua")
     --加载监控
-    -- import("driver/webhook.lua")
-    -- import("driver/loki.lua")
+    import("driver/webhook.lua")
+    import("driver/loki.lua")
 end
 
 --初始化loop
@@ -116,11 +116,10 @@ end
 quanta.run = function()
     qxpcall(function()
         local sclock_ms = lclock_ms()
-        -- socket_mgr.wait(sclock_ms, 10)
+        socket_mgr.wait(sclock_ms, 10)
         --系统更新
         local now_ms, clock_ms = ltime()
         update_mgr:update(now_ms, clock_ms, THREAD_MASTER)
-        timer.sleep(10)
         --时间告警
         local io_ms = clock_ms - sclock_ms
         local work_ms = lclock_ms() - sclock_ms

@@ -96,7 +96,7 @@ impl SocketMgr {
     }
 
     pub fn wait(&mut self, _now: u64, timeout: u64) -> u32 {
-        let now = luakit::now();
+        let now = luakit::steady_ms();
         self.m_objects.retain(|_, obj| {
             !obj.update(now)
         });

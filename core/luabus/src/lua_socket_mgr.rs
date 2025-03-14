@@ -23,15 +23,14 @@ pub struct LuaSocketMgr {
 impl LuaGc for LuaSocketMgr {}
 
 impl LuaSocketMgr {
-    pub fn new(L: *mut lua_State, max_conn: usize) -> Rc<RefCell<LuaSocketMgr>> {
+    pub fn new(L: *mut lua_State, max_conn: usize) -> LuaSocketMgr {
         let mgr = SocketMgr::new(max_conn);
         let weak = Rc::downgrade(&mgr);
-        let rc = Rc::new(RefCell::new(LuaSocketMgr {
+        LuaSocketMgr {
             socket_router: SocketRouter::new(weak),
             socket_mgr: mgr,
             lvm: L
-        }));
-        rc
+        }
     }
 
     pub fn map_token(&self, node_id: u32, token: u32) -> u32 {

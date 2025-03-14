@@ -30,23 +30,24 @@ impl BitSet {
     }
 
     pub fn load(&mut self, val: &[u8]) -> bool {
-        if val.is_empty() || val.len() * 8 > MAX_BITSET_SIZE {
+        let vsz = val.len();
+        if vsz == 0 || vsz * 8 > MAX_BITSET_SIZE {
             return false;
         }
-        let val_size = val.len();
-        self.m_bits.resize((val_size + 7) / 8 * 8, false);
-        for i in 0..val_size {
-            self.m_bits[i] = val[val_size - i - 1] == b'1';
+        self.m_bits.resize((vsz + 7) / 8 * 8, false);
+        for i in 0..vsz {
+            self.m_bits[i] = val[vsz - i - 1] == b'1';
         }
         true
     }
 
     pub fn loadhex(&mut self, val: &[u8]) -> bool {
-        if val.is_empty() || val.len() % 2 != 0 || val.len() * 4 > MAX_BITSET_SIZE {
+        let vsz = val.len();
+        if vsz == 0 || vsz % 2 != 0 || vsz * 4 > MAX_BITSET_SIZE {
             return false;
         }
-        self.m_bits.resize(val.len() * 4, false);
-        for (i, chunk) in val.chunks(2).enumerate() {
+        self.m_bits.resize(vsz * 4, false);
+        for (i, chunk) in val.rchunks(2).enumerate() {
             let hi = self.fromhex(chunk[0]);
             let low = self.fromhex(chunk[1]);
             let byte = (hi << 4) | low;
@@ -59,10 +60,11 @@ impl BitSet {
     }
 
     pub fn loadbin(&mut self, val: &[u8]) -> bool {
-        if val.len() * 8 > MAX_BITSET_SIZE {
+        let vsz = val.len();
+        if vsz * 8 > MAX_BITSET_SIZE {
             return false;
         }
-        self.m_bits.resize(val.len() * 8, false);
+        self.m_bits.resize(vsz * 8, false);
         for (i, &byte) in val.iter().enumerate() {
             for j in 0..8 {
                 let flag = 1 << j;
@@ -72,7 +74,7 @@ impl BitSet {
         true
     }
 
-    pub fn binary<'a>(&self) -> Vec<u8> {
+    pub fn binary(&self) -> Vec<u8> {
         let vsz = self.m_bits.len();
         let casz = (vsz + 7) / 8;
         let mut bitset_buf = vec![0u8; casz];
@@ -95,7 +97,8 @@ impl BitSet {
         for i in 0..casz {
             let mut byte = 0u8;
             for j in 0..8 {
-                if i * 8 + j < vsz && self.m_bits[i * 8 + j] {
+                let index = casz - i - 1;
+                if index * 8 + j < vsz && self.m_bits[index * 8 + j] {
                     byte |= 1 << j;
                 }
             }

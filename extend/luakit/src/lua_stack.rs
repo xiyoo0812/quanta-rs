@@ -340,8 +340,8 @@ macro_rules! tuple_impl {
         #[allow(non_snake_case)]
         #[allow(unused_assignments)]
         impl<$first: LuaRead, $($other: LuaRead),*> LuaRead for ($first, $($other),*) {
-            fn lua_to_native(L: *mut lua_State, index: i32) -> Option<($first, $($other),*)> {
-                let mut i = index;
+            fn lua_to_native(L: *mut lua_State, _: i32) -> Option<($first, $($other),*)> {
+                let mut i = 1;
                 let $first: $first = match LuaRead::lua_to_native(L, i) {
                     Some(v) => v,
                     None => return None
