@@ -11,10 +11,8 @@ pub mod lua_stack;
 pub mod lua_table;
 pub mod lua_slice;
 pub mod lua_codec;
-pub mod lua_reference;
-
-#[macro_use]
 pub mod lua_function;
+pub mod lua_reference;
 
 pub use lua_kit::*;
 pub use lua_base::*;

@@ -1,6 +1,5 @@
+
 pub mod lua;
+pub mod macros;
 
 pub use lua::*;
-
-#[macro_use]
-pub mod macros;
