@@ -1,6 +1,7 @@
 --codec_test.lua
 
 local log_debug     = logger.debug
+local log_dump      = logger.dump
 local lhex_encode   = ssl.hex_encode
 
 local hash_code     = codec.hash_code
@@ -8,6 +9,8 @@ local encode        = luakit.encode
 local decode        = luakit.decode
 local serialize     = luakit.serialize
 local unserialize   = luakit.unserialize
+
+--quanta.profile()
 
 --hash
 ----------------------------------------------------------------
@@ -72,15 +75,15 @@ log_debug("encode-> bufe: {}, {}", #bufe, lhex_encode(bufe))
 local datae = decode(bufe, #bufe)
 log_debug("decode-> {}", datae)
 
--- local t1 = timer.clock_ms()
--- local ip = luabus.dns("www.google.com")
--- log_debug("luabus dns-> {}", ip)
--- log_debug("luabus dns-> {}", timer.clock_ms() - t1)
+local t1 = timer.clock_ms()
+local ip = luabus.dns("www.google.com")
+log_debug("luabus dns-> {}", ip)
+log_debug("luabus dns-> {}", timer.clock_ms() - t1)
 
--- local host = luabus.host()
--- log_debug("luabus host-> {}", host)
+local host = luabus.host()
+log_debug("luabus host-> {}", host)
 
--- --dump
--- log_dump("dump-> a: {}", t)
+--dump
+log_dump("dump-> a: {}", t)
 
--- quanta.perfdump(50)
+--quanta.perfdump(50)
