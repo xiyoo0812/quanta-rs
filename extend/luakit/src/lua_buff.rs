@@ -1,10 +1,10 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
+use std::mem;
 use lua::ternary;
 
 use crate::lua_slice::Slice;
-use std::{mem, ops::{Deref, DerefMut}};
 
 const BUFFER_DEF: usize = 64 * 1024;       // 64K
 const BUFFER_MAX: usize = 16 * 1024 * 1024;// 16M
@@ -217,18 +217,3 @@ impl LuaBuf {
     }
 }
 
-// 为方便使用实现的常见 trait
-impl Deref for LuaBuf {
-    type Target = [u8];
-    
-    fn deref(&self) -> &Self::Target {
-        &self.data[self.head..self.tail]
-    }
-}
-
-impl DerefMut for LuaBuf {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        let tail = self.tail;
-        &mut self.data[tail..]
-    }
-}

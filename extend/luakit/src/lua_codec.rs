@@ -199,7 +199,7 @@ pub fn serialize(L: *mut lua_State) -> int {
     let buff = crate::get_buff();
     buff.clean();
     serialize_one(L, buff, 1, 1, lua::luaL_optinteger(L, 2, 0) > 0);
-    unsafe { lua::lua_pushlstring_(L, to_cptr(buff.data()), buff.len()) };
+    unsafe { lua::lua_pushlstring_(L, to_cptr(buff.data()), buff.size()) };
     1
 }
 
