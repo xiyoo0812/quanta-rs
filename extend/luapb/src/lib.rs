@@ -2,8 +2,9 @@
 #![allow(non_snake_case)]
 
 extern crate lua;
-extern crate libc;
 extern crate luakit;
+
+mod luapb;
 
 use lua::lua_State;
 use libc::c_int as int;
@@ -11,7 +12,7 @@ use libc::c_int as int;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use luakit::{ Luakit, LuaTable, LuaPushFn };
+use luakit::{ Luakit, LuaPushFn };
 
 thread_local! {
     static PB_CMD_IDS: RefCell<HashMap<u32, String>> = RefCell::new(HashMap::new());
@@ -19,15 +20,11 @@ thread_local! {
     static PB_CMD_NAMES: RefCell<HashMap<String, String>> = RefCell::new(HashMap::new());
 }
 
-extern "C" {
-    fn luaopen_pb(L: *mut lua_State) -> int;
-}
 
 #[no_mangle]
 pub extern "C" fn luaopen_luapb(L: *mut lua_State) -> int {
-    unsafe { luaopen_pb(L) };
     let mut kit = Luakit::load(L);
-    let mut luapb = LuaTable::new(L);
+    let mut luapb = kit.new_table(Some("protobuf"));
     luakit::set_function!(luapb, "bind_cmd", |cmd_id: u32, name: String, fullname : String| {
         PB_CMD_INDEXS.with_borrow_mut(|indexs: &mut HashMap<String, u32>| {
             indexs.insert(name.clone(), cmd_id);
