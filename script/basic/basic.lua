@@ -82,7 +82,7 @@ function quanta.get(name)
     local global_obj = quanta[name]
     if not global_obj then
         local info = dgetinfo(2, "S")
-        print("[quanta][get] {} not initial! source({}:{})", name, info.short_src, info.linedefined)
+        log_err("[quanta][get] {} not initial! source({}:{})", name, info.short_src, info.linedefined)
         return
     end
     return global_obj

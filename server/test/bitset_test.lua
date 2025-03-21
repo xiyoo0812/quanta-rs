@@ -14,7 +14,7 @@ log_debug("load: {}", val.tostring())
 
 val.set(4, true)
 val.set(2, true)
-log_debug("set: {}", val.tostring(false))
+log_debug("set: {}", val.tostring())
 log_debug("check 4-5: {},{}", val.check(4), val.check(5))
 
 local bin = val.binary()
