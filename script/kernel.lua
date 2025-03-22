@@ -19,10 +19,10 @@ local THREAD_MASTER = quanta.master
 local function init_library()
     --加载扩展库
     require("lssl")
-    require("ljson")
     require("luapb")
+    require("ljson")
+    --require("lbson")
     require("lcodec")
-    -- require("lbson")
     --加载基础库
     import("kernel/thread_mgr.lua")
     import("kernel/event_mgr.lua")
@@ -92,9 +92,9 @@ function quanta.main()
     --网络
     init_network()
     --加载服务发现
-    -- init_discover()
+    --init_discover()
     --初始化store
-    -- init_store()
+    --init_store()
 end
 
 --启动
@@ -124,7 +124,7 @@ quanta.run = function()
         local io_ms = clock_ms - sclock_ms
         local work_ms = lclock_ms() - sclock_ms
         if work_ms > HALF_MS or io_ms > SLOW_MS then
-             log_warn("[{}][run] last frame too long => all:{}, net:{})!", THREAD_NAME, work_ms, io_ms)
+            log_warn("[{}][run] last frame too long => all:{}, net:{})!", THREAD_NAME, work_ms, io_ms)
         end
     end, "quanta run err: {}")
 end

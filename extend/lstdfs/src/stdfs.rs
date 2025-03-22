@@ -3,8 +3,8 @@
 
 use std::fs::Metadata;
 use std::{io, env, fs};
+use std::time::UNIX_EPOCH;
 use std::path::MAIN_SEPARATOR;
-use std::os::windows::fs::MetadataExt;
 use std::path::{ self, Path, PathBuf, Component };
 
 use libc::c_int as int;
@@ -28,12 +28,6 @@ impl LuaPush for FileEntry {
             1
         }
     }
-}
-
-macro_rules! metadata_find {
-    ($metares:ident, $func:ident, $def:expr) => {
-        if let Ok(meta) = $metares { meta.$func() } else {  $def }
-    };
 }
 
 fn get_file_type(metares : &io::Result<Metadata>) -> &'static str {
@@ -230,14 +224,16 @@ pub fn lstdfs_filetype(L: *mut lua_State) -> int {
 
 pub fn lstdfs_file_size(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
-    let meta = fs::metadata(path);
-    metadata_find!(meta, file_size, 0).native_to_lua(L)
+    let rmeta = fs::metadata(path);
+    rmeta.map(|m| m.len()).unwrap_or(0).native_to_lua(L)
 }
 
 pub fn lstdfs_last_write_time(L: *mut lua_State) -> int {
     let path = lua::to_utf8(lua::lua_tolstring(L, 1));
-    let meta = fs::metadata(path);
-    metadata_find!(meta, last_write_time, 0).native_to_lua(L)
+    let rmeta = fs::metadata(path);
+    let stime = rmeta.map(|m| m.modified().unwrap_or(UNIX_EPOCH));
+    let mtime = stime.map(|t| t.duration_since(UNIX_EPOCH).unwrap().as_secs()).unwrap_or(0);
+    mtime.native_to_lua(L)
 }
 
 pub fn lstdfs_current_path(L: *mut lua_State) -> int {

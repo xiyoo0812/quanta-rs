@@ -19,7 +19,7 @@ mod lua_socket_node;
 use lua::lua_State;
 use libc::c_int as int;
 
-use luakit::{ Luakit, PtrBox, LuaPush, LuaPushFn, LuaPushFnMut, LuaPushLuaFn, LuaPushLuaFnMut, };
+use luakit::{ Luakit, PtrBox, LuaPush, LuaPushFn, LuaPushFnMut, LuaPushLuaFn, LuaPushLuaFnMut };
 
 use socket_tcp::SocketTcp;
 use socket_udp::SocketUdp;
