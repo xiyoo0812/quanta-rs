@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 use once_cell::sync::OnceCell;
 
-use luakit::{LuaBuf, Slice};
+use luakit::{LuaBuf, PtrBox, Slice};
 
 const HOLD_OFFSET: u32  = 10;
 
@@ -221,7 +221,7 @@ fn skip_field(slice: &mut Slice, field_tag: u32) -> Result<(), String> {
     }
 }
 
-struct PbEnum {
+pub struct PbEnum {
     name: String,
     kvpair: HashMap<i32, String>,
     vkpair: HashMap<String, i32>,
@@ -234,28 +234,28 @@ impl PbEnum {
 }
 
 struct PbField {
+    packed: bool,
     name: String,
     type_name: String,
     default_value: String,
-    number: i32,
     label: i32,
-    ftype: FieldType,
+    number: i32,
     oneof_index: i32,
-    penum: Option<PbEnum>,
-    message: Option<PbMessage>,
-    packed: bool,
+    ftype: FieldType,
+    penum: PtrBox<PbEnum>,
+    message: PtrBox<PbMessage>,
 }
-type PbFieldiMap = HashMap<i32, PbField>;
-type PbFieldsMap = HashMap<String, PbField>;
+type PbFieldiMap = HashMap<i32, PtrBox<PbField>>;
+type PbFieldsMap = HashMap<String, PtrBox<PbField>>;
 
 impl PbField {
     pub fn new() -> PbField {
         PbField {
             label: 0,
             number: 0,
-            penum: None,
             packed: false,
-            message: None,
+            penum: PtrBox::null(),
+            message: PtrBox::null(),
             oneof_index: 0,
             ftype: FieldType::MAX_TYPE,
             name: "".to_string(),
@@ -265,17 +265,21 @@ impl PbField {
     }
 
     pub fn is_repeated(&mut self) -> bool { self.label == 3 }
-    pub fn is_map(&mut self) -> bool { self.get_message().is_some() && self.message.is_map }
-    pub fn get_message(&mut self) -> Option<&PbMessage> {
-        
-     }
+    pub fn is_map(&mut self) -> bool { (!self.get_message().is_null()) && self.message.is_map }
+    pub fn get_message(&mut self) -> PtrBox<PbMessage> {
+        if !self.message.is_null() { return self.message.clone(); }
+        if self.ftype == FieldType::TYPE_MESSAGE && !self.type_name.is_empty(){
+            self.message = find_message(&self.type_name);
+        }
+        return self.message.clone();
+    }
 }
 
 pub struct PbMessage {
-    pub name: String,
-    pub fields: PbFieldiMap,
-    pub sfields: PbFieldsMap,
-    pub oneof_decl: Vec<String>,
+    name: String,
+    fields: PbFieldiMap,
+    sfields: PbFieldsMap,
+    oneof_decl: Vec<String>,
     pub is_map: bool
 }
 
@@ -291,10 +295,19 @@ impl PbMessage {
     }
 }
 
+impl Drop for PbMessage {
+    fn drop(&mut self) {
+        self.sfields.clear();
+        for (_, field) in self.fields.iter_mut() {
+            field.clone().unwrap();
+        }
+    }
+}
+
 struct PbDescriptor {
     syntax: String,
-    enums: HashMap<String, PbEnum>,
-    messages: HashMap<String, PbMessage>
+    enums: HashMap<String, PtrBox<PbEnum>>,
+    messages: HashMap<String, PtrBox<PbMessage>>
 }
 
 impl PbDescriptor {
@@ -307,8 +320,52 @@ impl PbDescriptor {
     }
 }
 
+impl Drop for PbDescriptor {
+    fn drop(&mut self) {
+        for (_, enump) in self.enums.iter_mut() {
+            enump.clone().unwrap();
+        }
+        for (_, message) in self.messages.iter_mut() {
+            message.clone().unwrap();
+        }
+        self.enums.clear();
+        self.messages.clear();
+    }
+}
+
 static DESCRIPTER: OnceCell<PbDescriptor> = OnceCell::new();
 fn Descriptor() -> &'static PbDescriptor {
     DESCRIPTER.get_or_init(|| PbDescriptor::new())
 }
 
+pub fn find_message(name: &str) -> PtrBox<PbMessage> {
+    if let Some(msg) = Descriptor().messages.get(name) {
+        return msg.clone();
+    }
+    PtrBox::null()
+}
+
+pub fn find_enum(name: &str) -> PtrBox<PbEnum> {
+    if let Some(penum) = Descriptor().enums.get(name) {
+        return penum.clone();
+    }
+    PtrBox::null()
+}
+
+fn find_field(message: &PtrBox<PbMessage>, field_name: &str) -> PtrBox<PbField> {
+    if let Some(field) = message.sfields.get(field_name) {
+        return field.clone();
+    }
+    PtrBox::null()
+}
+
+fn find_field_by_number(message: &PtrBox<PbMessage>, field_num: i32) -> PtrBox<PbField> {
+    if let Some(field) = message.fields.get(&field_num) {
+        return field.clone();
+    }
+    PtrBox::null()
+}
+
+fn find_field_by_tag(message: &PtrBox<PbMessage>, field_tag: i32) -> PtrBox<PbField> {
+    find_field_by_number(message, field_tag >> 3)
+}
