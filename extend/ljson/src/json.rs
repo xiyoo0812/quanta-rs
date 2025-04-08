@@ -190,8 +190,9 @@ impl DerefMut for JsonCodec {
 }
 
 impl Codec for JsonCodec {
-    fn decode(&mut self, L: *mut lua_State) -> Result<i32, CodecError>{
-        let mut slice = self.read.get_slice(None, Some(4));
-        self.base.decode_impl(L, &mut slice)
+    fn decode(&mut self, _L: *mut lua_State) -> Result<i32, CodecError>{
+        // let mut slice = self.read.get_slice(None, Some(4));
+        // self.base.decode_impl(L, &mut slice)
+        Ok(0)
     }
 }
