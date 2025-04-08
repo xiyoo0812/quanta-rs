@@ -3,10 +3,12 @@
 
 extern crate serde_json;
 
+use lua::lua_State;
 use libc::c_int as int;
 
-use lua::lua_State;
+use std::ops::{Deref, DerefMut};
 use serde_json::{ json, Map, Number, Value };
+use luakit::{ BaseCodec, Codec, CodecError, Slice };
 
 pub const MAX_ENCODE_DEPTH: u32     = 16;
 
@@ -155,5 +157,41 @@ pub fn encode_impl(L: *mut lua_State) -> int {
             Err(_) => lua::luaL_error(L, "encode can't pack too depth table"),
         }
         return 1;
+    }
+}
+
+pub struct JsonCodec {
+    base: BaseCodec
+}
+
+impl JsonCodec {
+    pub fn new() -> JsonCodec {
+        JsonCodec {
+            base: BaseCodec::new()
+        }
+    }
+
+    pub fn load_packet(&self, slice: &Slice) -> i32 {
+        slice.size() as i32
+    }
+}
+
+impl Deref for JsonCodec {
+    type Target = BaseCodec;
+    fn deref(&self) -> &Self::Target {
+        &self.base
+    }
+}
+
+impl DerefMut for JsonCodec {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.base
+    }
+}
+
+impl Codec for JsonCodec {
+    fn decode(&mut self, L: *mut lua_State) -> Result<i32, CodecError>{
+        let mut slice = self.read.get_slice(None, Some(4));
+        self.base.decode_impl(L, &mut slice)
     }
 }

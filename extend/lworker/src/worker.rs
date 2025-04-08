@@ -110,7 +110,6 @@ pub struct Worker {
     m_running: bool,
     m_lua: Luakit,
     m_name: String,
-    m_mutex: Mutex<()>,
     m_namespace: String,
     m_codec: WorkerCodec,
     m_environs: Environs,
@@ -134,7 +133,6 @@ impl Worker {
             m_lua : Luakit::new(),
             m_scheduler: scheduler,
             m_namespace : namespace,
-            m_mutex: Mutex::new(()),
             m_environs : HashMap::new(),
             m_codec : WorkerCodec::new(),
         }
