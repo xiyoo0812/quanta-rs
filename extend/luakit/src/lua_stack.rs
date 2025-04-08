@@ -254,7 +254,7 @@ impl<K, V> LuaRead for HashMap<K, V> where K: LuaRead + Eq + std::hash::Hash, V:
 }
 
 macro_rules! integer_impl(
-    ($t:ident) => (
+    ($t:ty) => (
         impl LuaPush for $t {
             fn native_to_lua(self, L: *mut lua_State) -> i32 {
                 unsafe { lua::lua_pushinteger(L, self as lua::lua_Integer) };
@@ -285,7 +285,7 @@ integer_impl!(u64);
 integer_impl!(usize);
 
 macro_rules! numeric_impl(
-    ($t:ident) => (
+    ($t:ty) => (
         impl LuaPush for $t {
             fn native_to_lua(self, L: *mut lua_State) -> i32 {
                 unsafe { lua::lua_pushnumber(L, self as lua::lua_Number) };

@@ -169,13 +169,15 @@ impl LogDest for FileDest {
         self.clean_time = clean_time;
     }
     fn raw_write(&mut self, msg: String, lvl: u32) {
-        if self.size + msg.len() > self.alloc_size {
-            self.alloc_size += PAGE_SIZE;
+        let msize = msg.len();
+        if self.size + msize > self.alloc_size {
+            let required_pages = (self.size + msize - self.alloc_size + PAGE_SIZE - 1) / PAGE_SIZE;
+            self.alloc_size += required_pages * PAGE_SIZE;
             self.unmap_file();
             self.map_file();
         }
         if self.mapbuf.is_some() {
-            let end = self.size + msg.len();
+            let end = self.size + msize;
             let map = self.mapbuf.as_mut().unwrap();
             map[self.size..end].copy_from_slice(msg.as_bytes());
             self.size = end;

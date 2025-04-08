@@ -31,11 +31,13 @@ impl<'a> Slice<'a> {
         (end <= self.data.len()).then(|| &self.data[start..end])
     }
 
-    pub fn erase(&mut self, erase_len: usize) {
+    pub fn erase(&mut self, erase_len: usize) -> Option<&[u8]> {
         let new_pos = self.pos + erase_len;
         if new_pos <= self.data.len() {
             self.pos = new_pos;
+            return Some(&self.data[new_pos-erase_len..new_pos]);
         }
+        None
     }
 
     pub fn touch<T: Copy + Default>(&self) -> Option<T> {
@@ -65,7 +67,8 @@ impl<'a> Slice<'a> {
         Some(value)
     }
 
-    pub fn data(&self) -> &[u8] {
+    pub fn data(&self, len: &mut usize) -> &[u8] {
+        *len = self.size();
         &self.data[self.pos..]
     }
 
@@ -79,7 +82,7 @@ impl<'a> Slice<'a> {
         data
     }
 
-    pub fn contents(&self) -> &'a [u8] {
+    pub fn contents(&self) -> &[u8] {
         &self.data[self.pos..]
     }
 

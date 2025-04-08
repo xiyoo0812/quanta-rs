@@ -487,7 +487,7 @@ pub trait Codec {
     fn encode(&mut self, L: *mut lua_State, index: i32) -> Vec<u8> {
         let n = unsafe { lua::lua_gettop(L) } - index + 1;
         let slice = encode_slice(L, index, n);
-        slice.data().to_vec()
+        slice.contents().to_vec()
     }
     fn decode(&mut self, L: *mut lua_State) -> Result<i32, CodecError>;
 }

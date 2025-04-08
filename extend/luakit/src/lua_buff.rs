@@ -69,6 +69,18 @@ impl LuaBuf {
             0
         }
     }
+    
+    pub fn truncature(&mut self, src: usize, dst: usize, len: usize) {
+        let start = self.head + src;
+        self.data.copy_within(start..start+len, dst);
+        self.tail = dst + len;
+    }
+
+    pub fn hold_place(&mut self, offset: usize) -> usize {
+        let base = self.tail - self.head;
+        self.pop_space(offset);
+        base
+    }
 
     pub fn push_data(&mut self, src: &[u8]) -> usize {
         if let Some(_) = self.peek_space(src.len()) {
@@ -107,7 +119,7 @@ impl LuaBuf {
         }
     }
 
-    pub fn peek_data<'a>(&'a self, peek_len: usize, offset: Option<usize>) -> Option<&'a [u8]> {
+    pub fn peek_data(&self, peek_len: usize, offset: Option<usize>) -> Option<&[u8]> {
         let offset = offset.unwrap_or(0);
         let available = self.size().saturating_sub(offset);
         (peek_len <= available).then(|| {
@@ -116,7 +128,15 @@ impl LuaBuf {
         })
     }
 
-    pub fn get_slice<'a>(&'a self, len: Option<usize>, offset: Option<usize>) -> Slice<'a> {
+    pub fn pop_space(&mut self, space_len: usize) -> usize {
+        if self.tail + space_len <= self.capacity {
+            self.tail += space_len;
+            return space_len;
+        }
+        return 0;
+    }
+
+    pub fn get_slice(&self, len: Option<usize>, offset: Option<usize>) -> Slice {
         let len = len.unwrap_or(0);
         let offset = offset.unwrap_or(0);
         let data_len = self.tail - (self.head + offset);
