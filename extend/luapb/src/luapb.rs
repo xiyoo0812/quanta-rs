@@ -2,10 +2,10 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-use lua::{ lua_State, to_char };
+use lua::{ lua_Number, lua_State, to_char };
 
-use std::{ collections::HashMap, sync::RwLock};
-use once_cell::sync::OnceCell;
+use std::cell::RefCell;
+use std::collections::HashMap;
 
 use luakit::{LuaBuf, LuaPush, LuaRead, PtrBox, Slice};
 
@@ -91,7 +91,7 @@ fn pb_tag(tag: u32) -> (u32, Wiretype) {
 fn wiretype_by_fieldtype(t : FieldType) -> Wiretype {
     match t {
     FieldType::TYPE_FLOAT       => Wiretype::I64,
-    FieldType::TYPE_INT64       => Wiretype::I32,
+    FieldType::TYPE_INT64       => Wiretype::VARINT,
     FieldType::TYPE_UINT64      => Wiretype::VARINT,
     FieldType::TYPE_INT32       => Wiretype::VARINT,
     FieldType::TYPE_FIXED64     => Wiretype::I64,
@@ -234,9 +234,11 @@ fn read_len_prefixed<'a>(slice: &'a mut Slice) -> Result<Slice<'a>, String> {
 fn write_len_prefixed(buf: &mut LuaBuf, hold_base: usize) -> Result<(), String> {
     let src = hold_base + HOLD_OFFSET;
     let size = buf.size() - src;
-    let offset = buf.copy(hold_base, &size.write_varint());
-    if offset == 0 { return Err("write_len_prefixed length error".to_string()); }
-    buf.truncature(src, hold_base + offset, size);
+    if size > 0 {
+        let offset = buf.copy(hold_base, &size.write_varint());
+        if offset == 0 { return Err("write_len_prefixed length error".to_string()); }
+        buf.truncature(src, hold_base + offset, size);
+    }
     Ok(())
 }
 
@@ -269,7 +271,7 @@ impl PbEnum {
 }
 
 struct PbField {
-    packed: i32,
+    packed: bool,
     name: String,
     type_name: String,
     default_value: String,
@@ -288,7 +290,7 @@ impl PbField {
         PbField {
             label: 0,
             number: 0,
-            packed: 0,
+            packed: false,
             penum: PtrBox::null(),
             message: PtrBox::null(),
             oneof_index: -1,
@@ -299,7 +301,7 @@ impl PbField {
         }
     }
 
-    pub fn is_repeated(&mut self) -> bool { self.label == 3 }
+    pub fn is_repeated(&self) -> bool { self.label == 3 }
     pub fn is_map(&mut self) -> bool { (!self.get_message().is_null()) && self.message.is_map() }
     pub fn get_message(&mut self) -> PtrBox<PbMessage> {
         if !self.message.is_null() { return self.message.clone(); }
@@ -374,29 +376,26 @@ impl Drop for PbDescriptor {
         self.clean();
     }
 }
-
-static DESCRIPTOR: OnceCell<RwLock<PbDescriptor>> = OnceCell::new();
-
-fn descriptor() -> &'static RwLock<PbDescriptor> {
-    DESCRIPTOR.get_or_init(|| RwLock::new(PbDescriptor::new()))
+thread_local! {
+    static DESCRIPTOR: RefCell<PbDescriptor> = RefCell::new(PbDescriptor::new());
 }
 
 pub fn find_message(name: &str) -> PtrBox<PbMessage> {
-    if let Ok(pb_descriptor) = descriptor().read() {
+    DESCRIPTOR.with_borrow(|pb_descriptor|{
         if let Some(msg) = pb_descriptor.messages.get(name) {
             return msg.clone();
         }
-    }
-    PtrBox::null()
+        PtrBox::null()
+    })
 }
 
 pub fn find_enum(name: &str) -> PtrBox<PbEnum> {
-    if let Ok(pb_descriptor) = descriptor().read() {
+    DESCRIPTOR.with_borrow(|pb_descriptor|{
         if let Some(penum) = pb_descriptor.enums.get(name) {
             return penum.clone();
         }
-    }
-    PtrBox::null()
+        PtrBox::null()
+    })
 }
 
 fn find_field(message: &PbMessage, field_name: &str) -> PtrBox<PbField> {
@@ -451,6 +450,58 @@ macro_rules! read_varint2lua {
     });
 }
 
+unsafe fn push_default(L: *mut lua_State, name: &str, t: &str) {
+    match t {
+        "NUMBER"  => {
+            lua::lua_pushnumber(L, 0 as lua_Number);
+            lua::lua_setfield(L, -2, to_char!(name));
+        }
+        "STRING"  => {
+            lua::lua_pushstring(L, "");
+            lua::lua_setfield(L, -2, to_char!(name));
+        }
+        "BOOL"  => {
+            lua::lua_pushboolean(L, 1);
+            lua::lua_setfield(L, -2, to_char!(name));
+        }
+        _ =>  {}
+    }
+}
+
+unsafe fn fill_message(L: *mut lua_State, msg: &mut PbMessage) {
+    lua::lua_createtable(L, 0, msg.fields.len() as i32);
+    for (name, field) in &mut msg.sfields {
+        match field.get_type() {
+            FieldType::TYPE_BOOL => push_default(L, &name, "BOOL"),
+            FieldType::TYPE_ENUM => push_default(L, &name, "NUMBER"),
+            FieldType::TYPE_FLOAT => push_default(L, &name, "NUMBER"),
+            FieldType::TYPE_INT32 => push_default(L, &name, "NUMBER"),
+            FieldType::TYPE_INT64 => push_default(L, &name, "NUMBER"),
+            FieldType::TYPE_SINT32 => push_default(L, &name, "NUMBER"),
+            FieldType::TYPE_SINT64 => push_default(L, &name, "NUMBER"),
+            FieldType::TYPE_UINT32 => push_default(L, &name, "NUMBER"),
+            FieldType::TYPE_UINT64 => push_default(L, &name, "NUMBER"),
+            FieldType::TYPE_FIXED32 => push_default(L, &name, "NUMBER"),
+            FieldType::TYPE_FIXED64 => push_default(L, &name, "NUMBER"),
+            FieldType::TYPE_SFIXED32 => push_default(L, &name, "NUMBER"),
+            FieldType::TYPE_SFIXED64 => push_default(L, &name, "NUMBER"),
+            FieldType::TYPE_BYTES => push_default(L, &name, "STRING"),
+            FieldType::TYPE_STRING => push_default(L, &name, "STRING"),
+            FieldType::TYPE_MESSAGE => {
+                if field.is_repeated() {
+                    lua::lua_createtable(L, 4, 0);
+                    lua::lua_setfield(L, -2, to_char!(name));
+                }
+                if field.is_map() {
+                    lua::lua_createtable(L, 0, 4);
+                    lua::lua_setfield(L, -2, to_char!(name));
+                }
+            },
+            _ => {}
+        }
+    }
+}
+
 fn decode_field(L: *mut lua_State, slice: &mut Slice, field: &mut PbField) -> Result<(), String> {
     match field.get_type() {
         FieldType::TYPE_FLOAT => read_fixtype2lua!(f32, slice, L),
@@ -483,14 +534,7 @@ fn decode_field(L: *mut lua_State, slice: &mut Slice, field: &mut PbField) -> Re
 }
 
 unsafe fn decode_map(L: *mut lua_State, slice: &mut Slice, field: &mut PbField) -> Result<(), String> {
-    let name = to_char!(field.name);
-    lua::lua_getfield(L, -1, name);
-    if !lua::lua_istable(L, -1) {
-        lua::lua_pop(L, 1);
-        lua::lua_createtable(L, 0, 4);
-        lua::lua_pushvalue(L, -1);
-        lua::lua_setfield(L, -3, name);
-    }
+    lua::lua_getfield(L, -1, to_char!(field.name));
     let msg = field.get_message();
     let mut mslice = read_len_prefixed(slice)?;
     while !mslice.is_empty() {
@@ -508,20 +552,26 @@ unsafe fn decode_map(L: *mut lua_State, slice: &mut Slice, field: &mut PbField) 
 }
 
 unsafe fn decode_repeated(L: *mut lua_State, slice: &mut Slice, field: &mut PbField) -> Result<(), String> {
-    let mut len = 1;
-    lua::lua_createtable(L, 0, 4);
-    let mut rslice = read_len_prefixed(slice)?;
-    while !rslice.is_empty() {
-        decode_field(L, &mut rslice, field)?;
-        lua::lua_rawseti(L, -2, len);
-        len += 1;
+    lua::lua_getfield(L, -1, to_char!(field.name));
+    if field.packed {
+        let mut len = 1;
+        let mut rslice = read_len_prefixed(slice)?;
+        while !rslice.is_empty() {
+            decode_field(L, &mut rslice, field)?;
+            lua::lua_rawseti(L, -2, len);
+            len += 1;
+        }
+    } else {
+        let len = lua::lua_rawlen(L, -1) as i32;
+        decode_field(L, slice, field)?;
+        lua::lua_rawseti(L, -2, len + 1);
     }
-    lua::lua_setfield(L, -2, to_char!(field.name));
+    lua::lua_pop(L, 1);
     Ok(())
 }
 
 pub unsafe fn decode_message(L: *mut lua_State, slice: &mut Slice, msg: &mut PbMessage) -> Result<(), String> {
-    lua::lua_createtable(L, 0, msg.fields.len() as i32);
+    fill_message(L, msg);
     while !slice.is_empty() {
         let mut tag: i32 = 0;
         read_varint::<i32>(slice, &mut tag)?;
@@ -632,15 +682,23 @@ unsafe fn encode_map(L: *mut lua_State,  buf: &mut LuaBuf, field: &mut PbField, 
 }
 
 unsafe fn encode_repeated(L: *mut lua_State,  buf: &mut LuaBuf, field: &mut PbField, index: i32) -> Result<(), String> {
-    write_field_type(buf, field.number, FieldType::TYPE_MESSAGE as i32)?;
-    let base = buf.hold_place(HOLD_OFFSET);
-    let index = lua::lua_absindex(L, index);
-    lua::lua_pushnil(L);
-    while lua::lua_next(L, index) != 0 {
-        encode_field(L, buf, field, -1)?;
-        lua::lua_pop(L, 1);
+    let len = lua::lua_rawlen(L, -1) as isize;
+    if field.packed {
+        write_field_type(buf, field.number, FieldType::TYPE_MESSAGE as i32)?;
+        let base = buf.hold_place(HOLD_OFFSET);
+        for i in 1..=len {
+            lua::lua_geti(L, index, i);
+            encode_field(L, buf, field, -1)?;
+            lua::lua_pop(L, 1);
+        }
+        write_len_prefixed(buf, base)?;
+    } else {
+        for i in 1..=len {
+            lua::lua_geti(L, index, i);
+            encode_field(L, buf, field, -1)?;
+            lua::lua_pop(L, 1);
+        }
     }
-    write_len_prefixed(buf, base)?;
     Ok(())
 }
 
@@ -707,11 +765,11 @@ fn read_enum(slice: &mut Slice, mut package: String) -> Result<(), String> {
             _ => skip_field(&mut eslice, tag)?,
         }
     }
-    if let Ok(ref mut pb_descriptor) = descriptor().write() {
+
+    DESCRIPTOR.with_borrow_mut(|pb_descriptor|{
         pb_descriptor.enums.insert(package, PtrBox::new(penum));
         return Ok(());
-    }
-    Err("write descriptor failed!".to_string())
+    })
 }
 
 fn read_field_option(slice: &mut Slice, field: &mut PbField) -> Result<(), String> {
@@ -720,7 +778,11 @@ fn read_field_option(slice: &mut Slice, field: &mut PbField) -> Result<(), Strin
         let mut tag: u32 = 0;
         read_varint(&mut oslice, &mut tag)?;
         match pb_tag(tag) {
-            (2, Wiretype::VARINT) => read_varint::<i32>(&mut oslice, &mut field.packed)?,
+            (2, Wiretype::VARINT) => {
+                let mut value: i32 = 0;
+                value.read_varint(&mut oslice)?;
+                field.packed = if value > 0 { true } else { field.label == 3 && DESCRIPTOR.with_borrow(|d| d.syntax == "proto3")};
+            }
             _ => skip_field(&mut oslice, tag)?,
         }
     }
@@ -773,6 +835,8 @@ fn read_field(slice: &mut Slice, msg: &mut PbMessage) -> Result<(), String> {
     }
     let number = field.number;
     let fname = field.name.clone();
+    //Only repeated fields of primitive numeric types (types which use the varint, 32-bit, or 64-bit wire types) can be declared as packed.
+    if wiretype_by_fieldtype(field.get_type()) == Wiretype::LEN { field.packed = false; }
     let pfield = PtrBox::new(field);
     msg.fields.insert(number, pfield.clone());
     msg.sfields.insert(fname, pfield);
@@ -798,11 +862,10 @@ fn read_message(slice: &mut Slice, mut package: String) -> Result<(), String> {
             _ => skip_field(&mut mslice, tag)?,
         }
     }
-    if let Ok(ref mut Descriptor) = descriptor().write() {
-        Descriptor.messages.insert(package, PtrBox::new(message));
+    DESCRIPTOR.with_borrow_mut(|pb_descriptor|{
+        pb_descriptor.messages.insert(package, PtrBox::new(message));
         return Ok(());
-    }
-    Err("write descriptor failed!".to_string())
+    })
 }
 
 fn read_file_descriptor(slice: &mut Slice) -> Result<(), String> {
@@ -822,7 +885,6 @@ fn read_file_descriptor(slice: &mut Slice) -> Result<(), String> {
 }
 
 pub fn read_file_descriptor_set(slice: &mut Slice) -> Result<(), String> {
-    pb_clear();
     while !slice.is_empty() {
         let mut tag: u32 = 0;
         read_varint(slice, &mut tag)?;
@@ -835,27 +897,27 @@ pub fn read_file_descriptor_set(slice: &mut Slice) -> Result<(), String> {
 }
 
 pub fn pb_clear() {
-    if let Ok(ref mut pb_descriptor) = descriptor().write() {
+    DESCRIPTOR.with_borrow_mut(|pb_descriptor|{
         pb_descriptor.clean();
-    }
+    })
 }
 
 pub fn pb_enums(L: *mut lua_State) -> i32 {
-    let mut enums = Vec::new();
-    if let Ok(pb_descriptor) = descriptor().read() {
+    DESCRIPTOR.with_borrow(|pb_descriptor|{
+        let mut enums = Vec::new();
         for (name, _) in &pb_descriptor.enums {
             enums.push(name.clone());
         }
-    }
-    return luakit::vector_return!(L, enums);
+        return luakit::vector_return!(L, enums);
+    })
 }
 
 pub fn pb_messages(L: *mut lua_State) -> i32 {
-    let mut messages = HashMap::new();
-    if let Ok(pb_descriptor) = descriptor().read() {
+    DESCRIPTOR.with_borrow(|pb_descriptor|{
+        let mut messages = HashMap::new();
         for (name, message) in &pb_descriptor.messages {
             messages.insert(name.clone(), message.name.clone());
         }
-    }
-    return luakit::variadic_return!(L, messages);
+        return luakit::variadic_return!(L, messages);
+    })
 }

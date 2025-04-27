@@ -10,7 +10,8 @@ use lua::lua_State;
 use libc::c_int as int;
 
 use std::io::Read;
-use std::{cell::RefCell, fs::File};
+use std::fs::File;
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 use luakit::{ LuaPushFn, LuaPushLuaFn, Luakit, PtrBox, Slice };
