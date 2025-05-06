@@ -90,7 +90,8 @@ fn pb_tag(tag: u32) -> (u32, Wiretype) {
 
 fn wiretype_by_fieldtype(t : FieldType) -> Wiretype {
     match t {
-    FieldType::TYPE_FLOAT       => Wiretype::I64,
+    FieldType::TYPE_DOUBLE      => Wiretype::I64,
+    FieldType::TYPE_FLOAT       => Wiretype::I32,
     FieldType::TYPE_INT64       => Wiretype::VARINT,
     FieldType::TYPE_UINT64      => Wiretype::VARINT,
     FieldType::TYPE_INT32       => Wiretype::VARINT,
