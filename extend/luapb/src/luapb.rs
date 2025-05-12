@@ -2,7 +2,7 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-use lua::{ lua_Number, lua_State, to_char };
+use lua::{ lua_State, to_char };
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -453,56 +453,36 @@ macro_rules! read_varint2lua {
     });
 }
 
-unsafe fn push_default(L: *mut lua_State, name: &str, t: &str) {
-    match t {
-        "NUMBER"  => {
-            lua::lua_pushnumber(L, 0 as lua_Number);
-            lua::lua_setfield(L, -2, to_char!(name));
-        }
-        "STRING"  => {
-            lua::lua_pushstring(L, "");
-            lua::lua_setfield(L, -2, to_char!(name));
-        }
-        "BOOL"  => {
-            lua::lua_pushboolean(L, 1);
-            lua::lua_setfield(L, -2, to_char!(name));
-        }
-        _ =>  {}
-    }
-}
-
 unsafe fn fill_message(L: *mut lua_State, msg: &mut PbMessage) {
     lua::lua_createtable(L, 0, msg.fields.len() as i32);
     for (name, field) in &mut msg.sfields {
-        match field.get_type() {
-            FieldType::TYPE_BOOL => push_default(L, &name, "BOOL"),
-            FieldType::TYPE_ENUM => push_default(L, &name, "NUMBER"),
-            FieldType::TYPE_FLOAT => push_default(L, &name, "NUMBER"),
-            FieldType::TYPE_INT32 => push_default(L, &name, "NUMBER"),
-            FieldType::TYPE_INT64 => push_default(L, &name, "NUMBER"),
-            FieldType::TYPE_SINT32 => push_default(L, &name, "NUMBER"),
-            FieldType::TYPE_SINT64 => push_default(L, &name, "NUMBER"),
-            FieldType::TYPE_UINT32 => push_default(L, &name, "NUMBER"),
-            FieldType::TYPE_UINT64 => push_default(L, &name, "NUMBER"),
-            FieldType::TYPE_FIXED32 => push_default(L, &name, "NUMBER"),
-            FieldType::TYPE_FIXED64 => push_default(L, &name, "NUMBER"),
-            FieldType::TYPE_SFIXED32 => push_default(L, &name, "NUMBER"),
-            FieldType::TYPE_SFIXED64 => push_default(L, &name, "NUMBER"),
-            FieldType::TYPE_BYTES => push_default(L, &name, "STRING"),
-            FieldType::TYPE_STRING => push_default(L, &name, "STRING"),
-            FieldType::TYPE_MESSAGE => {
-                if field.is_repeated() {
-                    lua::lua_createtable(L, 4, 0);
-                    lua::lua_setfield(L, -2, to_char!(name));
-                }
-                if field.is_map() {
-                    lua::lua_createtable(L, 0, 4);
-                    lua::lua_setfield(L, -2, to_char!(name));
-                }
-            },
-            _ => {}
+        let bmap = field.is_map(); let brepeated = field.is_repeated();
+        if brepeated || bmap {
+            lua::lua_createtable(L, if brepeated {4} else {0}, if bmap {0} else {4});
+            lua::lua_setfield(L, -2, to_char!(name));
+            continue;
         }
     }
+    lua::luaL_getmetatable(L, &msg.meta);
+    if lua::lua_isnil(L, -1) {
+        lua::lua_pop(L, 1);
+        lua::luaL_newmetatable(L, to_char!(msg.meta));
+        lua::lua_createtable(L, 0, msg.fields.len() as i32);
+        for (name, field) in &mut msg.sfields {
+            if field.is_map() || field.is_repeated() { continue };
+            match FieldType::from(field.ftype) {
+                FieldType::TYPE_BOOL => lua::lua_pushboolean(L, 0),
+                FieldType::TYPE_FLOAT => lua::lua_pushnumber(L, 0 as f64),
+                FieldType::TYPE_DOUBLE => lua::lua_pushnumber(L, 0 as f64),
+                FieldType::TYPE_BYTES => lua::lua_pushstring(L, ""),
+                FieldType::TYPE_STRING => lua::lua_pushstring(L, ""),
+                _ => lua::lua_pushinteger(L, 0),
+            }
+            lua::lua_setfield(L, -2, to_char!(name));
+        }
+        lua::lua_setfield(L, -2, to_char!("__index"));
+    }
+    lua::lua_setmetatable(L, -2);
 }
 
 fn decode_field(L: *mut lua_State, slice: &mut Slice, field: &mut PbField) -> Result<(), String> {
