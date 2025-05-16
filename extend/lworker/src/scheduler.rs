@@ -2,7 +2,6 @@
 #![allow(dead_code)]
 
 use dashmap::DashMap;
-use std::sync::Mutex;
 use std::collections::HashMap;
 
 use lua::lua_State;
@@ -14,7 +13,6 @@ type Environs = HashMap<String, String>;
 
 pub struct Scheduler {
     m_last_tick: u64,
-    m_mutex: Mutex<()>,
     m_namespace: String,
     m_codec: WorkerCodec,
     m_environs: Environs,
@@ -25,7 +23,6 @@ impl Scheduler {
     pub fn new() -> Self {
         Scheduler{
             m_last_tick: 0,
-            m_mutex: Mutex::new(()),
             m_workers : DashMap::new(),
             m_environs : HashMap::new(),
             m_codec : WorkerCodec::new(),
