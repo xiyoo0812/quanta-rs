@@ -10,11 +10,12 @@ use lua::lua_State;
 use libc::c_int as int;
 
 use std::io::Read;
-use std::{cell::RefCell, fs::File};
+use std::fs::File;
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 use luakit::{ LuaPushFn, LuaPushLuaFn, Luakit, PtrBox, Slice };
-use luapb::{ find_enum, find_message, pb_clear, pb_enums, pb_messages, encode_message, decode_message, read_file_descriptor_set, PbMessage};
+use luapb::{ find_enum, find_message, encode_message, decode_message, read_file_descriptor_set, PbMessage};
 
 thread_local! {
     static PB_CMD_INDEXS: RefCell<HashMap<String, u32>> = RefCell::new(HashMap::new());
@@ -95,34 +96,30 @@ fn load_file(L: *mut lua_State, filename: String) -> int {
     0
 }
 
-fn pb_encode(L: *mut lua_State) ->int {
-    match unsafe { pbmsg_from_stack(L, 1, &mut 0) } {
-        Ok(mut msg) => {
-            let buf = luakit::get_buff();
-            buf.clean();
-            match unsafe { encode_message(L, buf, &mut msg) } {
-                Ok(()) => lua::lua_pushlstring(L, buf.string()),
-                Err(e) => lua::luaL_error(L, &e),
-            }
-        },
+fn pb_encode(L: *mut lua_State, fname: String) ->int {
+    let mut msg = find_message(&fname);
+    if msg.is_null() {
+        lua::luaL_error(L, "invalid pb cmd type");
+    }
+    let buf = luakit::get_buff();
+    buf.clean();
+    match unsafe { encode_message(L, buf, &mut msg) } {
+        Ok(()) => lua::lua_pushlstring(L, buf.string()),
         Err(e) => lua::luaL_error(L, &e),
     }
     1
 }
 
-fn pb_decode(L: *mut lua_State) ->int {
-    match unsafe { pbmsg_from_stack(L, 1, &mut 0) } {
-        Ok(mut msg) => {
-            let val = lua::lua_tolstring(L, 2);
-            let mut slice = Slice::attach(val);
-            match unsafe { decode_message(L, &mut slice, &mut msg) }{
-                Ok(()) => {},
-                Err(e)=> {
-                    lua::luaL_error(L, &e)
-                },
-            }
-        },
-        Err(e)=> lua::luaL_error(L, &e),
+fn pb_decode(L: *mut lua_State, fname: String) ->int {
+    let mut msg = find_message(&fname);
+    if msg.is_null() {
+        lua::luaL_error(L, "invalid pb cmd type");
+    }
+    let val = lua::lua_tolstring(L, 2);
+    let mut slice = Slice::attach(val);
+    match unsafe { decode_message(L, &mut slice, &mut msg) }{
+        Ok(()) => {},
+        Err(e) => lua::luaL_error(L, &e),
     }
     1
 }
@@ -156,13 +153,14 @@ pub extern "C" fn luaopen_luapb(L: *mut lua_State) -> int {
     let mut kit = Luakit::load(L);
     let mut luapb = kit.new_table(Some("protobuf"));
     luakit::set_function!(luapb, "load", load_pb);
-    luakit::set_function!(luapb, "clear", pb_clear);
-    luakit::set_function!(luapb, "enums", pb_enums);
     luakit::set_function!(luapb, "enum", pb_enum_id);
     luakit::set_function!(luapb, "decode", pb_decode);
     luakit::set_function!(luapb, "encode", pb_encode);
     luakit::set_function!(luapb, "loadfile", load_file);
-    luakit::set_function!(luapb, "messages", pb_messages);
+    luakit::set_function!(luapb, "clear", luapb::pb_clear);
+    luakit::set_function!(luapb, "enums", luapb::pb_enums);
+    luakit::set_function!(luapb, "fields", luapb::pb_fields);
+    luakit::set_function!(luapb, "messages", luapb::pb_messages);
     //  luakit::set_function("pbcodec", pb_codec);
     luakit::set_function!(luapb, "bind_cmd", |cmd_id: u32, name: String, fullname : String| {
         let message = find_message(&fullname);
