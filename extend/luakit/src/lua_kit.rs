@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
+#[cfg(windows)]
 use std::env;
 use std::cell::RefCell;
 

@@ -1,5 +1,6 @@
 #![allow(improper_ctypes)]
-#![allow(non_snake_case)]
+#![allow(non_snake_case)] 
+#![allow(dead_code)]
 
 extern crate lua;
 extern crate luakit;
