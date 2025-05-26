@@ -15,12 +15,22 @@ clean:
     cargo clean
 
 post-debug:
-	cp -rf target/debug/*.dll bin/
-	cp -rf target/debug/quanta bin/
+    for file in target/debug/lib*.so; do \
+        if [ -f "$$file" ]; then \
+            newname=$$(basename "$$file" | sed 's/^lib//'); \
+            cp -f "$$file" "bin/$$newname"; \
+        fi \
+    done
+    cp -rf target/debug/quanta bin/
 
 post-release:
-	cp -rf target/release/*.dll bin/
-	cp -rf target/release/quanta bin/
+    for file in target/release/lib*.so; do \
+        if [ -f "$$file" ]; then \
+            newname=$$(basename "$$file" | sed 's/^lib//'); \
+            cp -f "$$file" "bin/$$newname"; \
+        fi \
+    done
+    cp -rf target/release/quanta bin/
 
 dev: debug post-debug
 pub: release post-release
