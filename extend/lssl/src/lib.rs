@@ -21,8 +21,18 @@ use ring::digest:: {Context, SHA1_FOR_LEGACY_USE_ONLY, SHA256, SHA512, SHA1_OUTP
 
 use luakit::{ Luakit, LuaPush, LuaPushFn, LuaPushFnMut };
 
-fn to_hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>()
+const HEX_LUT: [u8; 16] = [
+    b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7',
+    b'8', b'9', b'A', b'B', b'C', b'D', b'E', b'F',
+];
+
+fn to_hex(bytes: &[u8]) -> Vec<u8> {
+    let mut buffer = Vec::with_capacity(bytes.len() * 2);
+    for &byte in bytes {
+        buffer.push(HEX_LUT[(byte >> 4) as usize]);
+        buffer.push(HEX_LUT[(byte & 0x0F) as usize]);
+    }
+    buffer
 }
 
 fn from_hex(hex_str: &[u8]) -> Vec<u8> {
@@ -51,7 +61,7 @@ fn randomkey(size: usize, hex: bool) -> Vec<u8> {
         tmp[i] = rand::random::<u8>();
     }
     if hex {
-        to_hex(&tmp).as_bytes().to_vec()
+        to_hex(&tmp)
     } else {
         tmp
     }
@@ -62,7 +72,7 @@ fn md5(input: &[u8], hex: bool) -> Vec<u8> {
     hasher.update(input);
     let bytes = hasher.finalize().to_vec();
     if hex {
-        to_hex(&bytes).as_bytes().to_vec()
+        to_hex(&bytes)
     } else {
         bytes
     }
