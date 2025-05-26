@@ -11,6 +11,6 @@ fn main() {
     if cfg!(windows) {
         println!("cargo:rustc-link-lib=dylib=lualog.dll");
     } else {
-        println!("cargo:rustc-link-lib=dylib=lualog.so");
+        println!("cargo:rustc-link-lib=dylib=lualog");
     }
 }
