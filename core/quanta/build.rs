@@ -8,5 +8,9 @@ fn main() {
     println!("{}", lib_path);
     // 传递链接库搜索路径给编译器
     println!("cargo:rustc-link-search=native={}", lib_path);
-    println!("cargo:rustc-link-lib=dylib=lualog.dll");
+    if cfg!(windows) {
+        println!("cargo:rustc-link-lib=dylib=lualog.dll");
+    } else {
+        println!("cargo:rustc-link-lib=dylib=lualog.so");
+    }
 }
